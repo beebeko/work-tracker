@@ -1,0 +1,12 @@
+{
+    "ok": true,
+    "dryRun": true,
+    "registryPath": "docs/features/registry.md",
+    "outputPath": "data/store/feature-metadata.json",
+    "reportPath": "data/migrations/reports/f004-data-management-validation-report.json",
+    "sourceDigestSha256": "d6aa84e5b2cd41d535a00591100a02adc5ca3c6eb938040d810c9125f7f0678a",
+    "extractedFeatureId": "F-004",
+    "migratedFeatureCount": 1,
+    "issues": [],
+    "generatedAt": "2026-04-19T03:41:09.997Z"
+}

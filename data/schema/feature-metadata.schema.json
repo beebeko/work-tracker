@@ -1,0 +1,185 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://work-tracker.local/schema/feature-metadata.schema.json",
+    "title": "Feature Metadata",
+    "description": "Canonical feature governance metadata. Markdown registry is projection-only.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+        "schemaVersion",
+        "lastUpdated",
+        "projection",
+        "features"
+    ],
+    "properties": {
+        "schemaVersion": {
+            "type": "string",
+            "const": "1.0"
+        },
+        "lastUpdated": {
+            "type": "string",
+            "format": "date"
+        },
+        "projection": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "markdownRegistryPath",
+                "policy"
+            ],
+            "properties": {
+                "markdownRegistryPath": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "policy": {
+                    "type": "string",
+                    "const": "projection-only"
+                }
+            }
+        },
+        "features": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                    "featureId",
+                    "name",
+                    "status",
+                    "owner",
+                    "summary",
+                    "classification",
+                    "confidence",
+                    "scope"
+                ],
+                "properties": {
+                    "featureId": {
+                        "type": "string",
+                        "pattern": "^F-[0-9]{3}$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": ["planned", "active", "paused", "completed"]
+                    },
+                    "owner": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "summary": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "classification": {
+                        "type": "string",
+                        "enum": ["existing", "new-sensible", "neither"]
+                    },
+                    "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    },
+                    "scope": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": ["includes", "excludes"],
+                        "properties": {
+                            "includes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            },
+                            "excludes": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                }
+                            }
+                        }
+                    },
+                    "history": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                                "date",
+                                "requestSummary",
+                                "classification",
+                                "confidence",
+                                "actingAgent"
+                            ],
+                            "properties": {
+                                "date": {
+                                    "type": "string",
+                                    "format": "date"
+                                },
+                                "requestSummary": {
+                                    "type": "string",
+                                    "minLength": 1
+                                },
+                                "classification": {
+                                    "type": "string",
+                                    "enum": ["existing", "new-sensible", "neither"]
+                                },
+                                "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                },
+                                "actingAgent": {
+                                    "type": "string",
+                                    "minLength": 1
+                                },
+                                "notes": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "migration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+                "sourcePath",
+                "sourceFormat",
+                "sourceDigestSha256",
+                "lastReportPath",
+                "capturedAt"
+            ],
+            "properties": {
+                "sourcePath": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "sourceFormat": {
+                    "type": "string",
+                    "const": "registry-markdown-yaml-fence"
+                },
+                "sourceDigestSha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                },
+                "lastReportPath": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "capturedAt": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        }
+    }
+}

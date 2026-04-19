@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  metadata-parity-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    name: "F-004: Metadata Parity Check"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate feature metadata schema
+        run: npx ajv validate --spec=draft7 --data-file=data/store/feature-metadata.json data/schema/feature-metadata.schema.json
+
+      - name: Check metadata digest consistency
+        run: node scripts/f004-routing/cli.mjs parity || exit 2
+
+  validate:
+    needs: metadata-parity-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Firestore rules tests
+        run: npm run test:firestore:rules
+
+      - name: End-to-end tests
+        run: npx playwright test --reporter=line
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            playwright-report/
+            test-results/
+            test-output.txt

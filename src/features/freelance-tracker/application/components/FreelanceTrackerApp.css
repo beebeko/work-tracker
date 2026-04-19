@@ -1,0 +1,250 @@
+.freelance-tracker-app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background: #1b1b1b;
+    color: #d4d4d4;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+}
+
+.freelance-tracker-app__header {
+    display: flex;
+    align-items: center;
+    min-height: 60px;
+    padding: 0 16px;
+    border-bottom: 1px solid #303030;
+    background: #232323;
+    flex-shrink: 0;
+}
+
+.freelance-tracker-app__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.freelance-tracker-app__sync-status {
+    margin-left: auto;
+    border: 1px solid #3a3a3a;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.freelance-tracker-app__sync-status--offline {
+    border-color: #b08a3b;
+    color: #d4bc86;
+}
+
+.freelance-tracker-app__sync-status--syncing {
+    border-color: #4e94ce;
+    color: #89b7dc;
+}
+
+.freelance-tracker-app__sync-status--synced {
+    border-color: #4f8a55;
+    color: #8bc28e;
+}
+
+.freelance-tracker-app__sync-status--bootstrap-error {
+    border-color: #b5605a;
+    color: #d8a09b;
+}
+
+.freelance-tracker-app__retry-button {
+    margin-left: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid #b5605a;
+    color: #d8a09b;
+    cursor: pointer;
+}
+
+.freelance-tracker-app__retry-button:hover {
+    background: rgba(181, 96, 90, 0.15);
+}
+
+.freelance-tracker-app__workspace {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+}
+
+.freelance-tracker-app__tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    border-bottom: 1px solid #303030;
+    background: #202020;
+    padding: 8px;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.freelance-tracker-app__tab {
+    border: 1px solid #383838;
+    background: #252526;
+    color: #bdbdbd;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.freelance-tracker-app__tab--active {
+    background: #0e639c;
+    border-color: #0e639c;
+    color: #ffffff;
+}
+
+.freelance-tracker-app__panels {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+}
+
+.freelance-tracker-app__panel {
+    display: none;
+    min-height: 0;
+    height: 100%;
+    background: #1b1b1b;
+}
+
+.freelance-tracker-app__panel--active {
+    display: flex;
+    flex-direction: column;
+}
+
+.freelance-tracker-app__panel-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+
+.freelance-tracker-app__left-tabs {
+    display: none;
+    border-bottom: 1px solid #303030;
+    background: #202020;
+    padding: 8px;
+    gap: 8px;
+}
+
+.freelance-tracker-app__left-tab {
+    border: 1px solid #3a3a3a;
+    background: #252526;
+    color: #bdbdbd;
+    padding: 8px 10px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.freelance-tracker-app__left-tab--active {
+    background: #0e639c;
+    border-color: #0e639c;
+    color: #fff;
+}
+
+.freelance-tracker-app__left-content {
+    display: none;
+    min-height: 0;
+}
+
+.freelance-tracker-app__left-content[data-mobile-active="true"] {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.freelance-tracker-app__loading-indicator {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    padding: 8px 12px;
+    background: #0e639c;
+    color: #ffffff;
+    font-size: 12px;
+    border: 1px solid #1177bb;
+    z-index: 20;
+}
+
+@media (min-width: 1024px) {
+    .freelance-tracker-app__header {
+        padding: 0 20px;
+    }
+
+    .freelance-tracker-app__tabs {
+        display: none;
+    }
+
+    .freelance-tracker-app__panels {
+        display: grid;
+        grid-template-columns: minmax(320px, 380px) minmax(0, 1.1fr) minmax(
+                320px,
+                0.95fr
+            );
+    }
+
+    .freelance-tracker-app__panel {
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #303030;
+    }
+
+    .freelance-tracker-app__panel:last-child {
+        border-right: none;
+    }
+
+    .freelance-tracker-app__left-tabs {
+        display: flex;
+    }
+
+    .freelance-tracker-app__left-content[data-desktop-active="true"] {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+    }
+}
+
+/* Swap "Organization" → "Org" only at ≤320px where the full word would break.
+   Short label is aria-hidden so the accessible name stays "Organization". */
+.freelance-tracker-app__tab-label--short {
+    display: none;
+}
+
+@media (max-width: 320px) {
+    .freelance-tracker-app__tab-label--full {
+        display: none;
+    }
+
+    .freelance-tracker-app__tab-label--short {
+        display: inline;
+    }
+}
+
+/* Phone: reduce tab gap and horizontal padding so all labels fit without overflow.
+   overflow-wrap is a last-resort guard for very narrow viewports (320px). */
+@media (max-width: 1023px) {
+    .freelance-tracker-app__tabs {
+        gap: 4px;
+        padding: 6px;
+    }
+
+    .freelance-tracker-app__tab {
+        padding: 8px 4px;
+        text-align: center;
+        overflow-wrap: break-word;
+        word-break: break-word;
+    }
+}

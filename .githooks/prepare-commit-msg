@@ -1,0 +1,6 @@
+#!/bin/bash
+# .githooks/prepare-commit-msg
+# Minimal shim: invoke Node.js hook script
+# Invoked by Git before commit message editing
+
+exec node scripts/f004-routing/hook-prepare-commit-msg.mjs "$@"

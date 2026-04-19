@@ -1,0 +1,31 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Venue History Schema",
+    "description": "Record of venues used per organization (for autocomplete)",
+    "type": "object",
+    "required": ["organizationId", "venueName", "count", "lastUsedAt"],
+    "properties": {
+        "organizationId": {
+            "type": "string",
+            "pattern": "^org-[a-z0-9]+$",
+            "description": "Organization this venue belongs to"
+        },
+        "venueName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Venue/location name (e.g., 'Times Square Theatre', 'Broadway District')"
+        },
+        "count": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Number of entries at this venue"
+        },
+        "lastUsedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 timestamp of last use"
+        }
+    },
+    "additionalProperties": false
+}

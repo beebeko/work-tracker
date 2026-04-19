@@ -1,0 +1,418 @@
+/**
+ * PaySummary Styles
+ */
+
+.pay-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    min-height: 100%;
+    background: #1b1b1b;
+}
+
+.pay-summary__panel-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pay-summary__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #f3f3f3;
+}
+
+.pay-summary__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid #303030;
+    background: #202020;
+}
+
+.pay-summary__selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pay-summary__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pay-summary__help-text {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #9f9f9f;
+}
+
+.pay-summary__field label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9d9d9d;
+}
+
+.pay-summary__field select {
+    background: #252526;
+    border: 1px solid #3a3a3a;
+    color: #d4d4d4;
+    padding: 8px;
+    font-family: inherit;
+    font-size: 12px;
+}
+
+.pay-summary__field select:hover {
+    border-color: #4a4a4a;
+}
+
+.pay-summary__field select:focus {
+    outline: 2px solid #4e94ce;
+    outline-offset: -2px;
+}
+
+.pay-summary__field select:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pay-summary__filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pay-summary__filter-row label {
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #c0c0c0;
+    cursor: pointer;
+}
+
+.pay-summary__cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.pay-summary__card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+    border: 1px solid #303030;
+    background: #202020;
+}
+
+.pay-summary__card--primary {
+    border-color: #2d5d46;
+    background: #1d2a21;
+}
+
+.pay-summary__card--warning {
+    border-color: #7c632a;
+    background: #2d281c;
+}
+
+.pay-summary__card--cumulative {
+    border-color: #21506b;
+    background: #1d272d;
+}
+
+.pay-summary__card-value {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #f1f1f1;
+}
+
+.pay-summary__card--primary .pay-summary__card-value {
+    color: #89d7a9;
+}
+
+.pay-summary__card--warning .pay-summary__card-value {
+    color: #f0c86a;
+}
+
+.pay-summary__card--cumulative .pay-summary__card-value {
+    color: #88c8eb;
+}
+
+.pay-summary__card-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9d9d9d;
+}
+
+.pay-summary__loading,
+.pay-summary__placeholder {
+    grid-column: 1 / -1;
+    padding: 20px;
+    text-align: center;
+    color: #8f8f8f;
+    border: 1px solid #303030;
+    background: #202020;
+    font-size: 12px;
+}
+
+.pay-summary__section-label {
+    grid-column: 1 / -1;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6f6f6f;
+    padding-top: 4px;
+}
+
+.pay-summary__section-label--break {
+    border-top: 1px solid #2a2a2a;
+    padding-top: 12px;
+    margin-top: 4px;
+}
+
+.pay-summary__card--total {
+    border-color: #3d5a7c;
+    background: #1d2535;
+}
+
+.pay-summary__card--total .pay-summary__card-value {
+    color: #a8c8f0;
+}
+
+.pay-summary__chart-wrap {
+    grid-column: 1 / -1;
+}
+
+.pay-summary__chart {
+    border: 1px solid #2d2d2d;
+    background: #202020;
+    padding: 12px;
+}
+
+.pay-summary__chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.pay-summary__chart-title {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9d9d9d;
+}
+
+.pay-summary__chart-toggle {
+    margin: 0;
+    border: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pay-summary__chart-toggle legend {
+    font-size: 11px;
+    color: #8e8e8e;
+    margin-right: 4px;
+}
+
+.pay-summary__chart-toggle label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: #c5c5c5;
+}
+
+.pay-summary__chart-toggle input {
+    accent-color: #4e94ce;
+}
+
+.pay-summary__chart-content {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px;
+    align-items: center;
+}
+
+.pay-summary__chart-visual {
+    width: 120px;
+    height: 120px;
+}
+
+.pay-summary__chart-svg {
+    width: 120px;
+    height: 120px;
+}
+
+.pay-summary__chart-total-label {
+    fill: #8d8d8d;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.pay-summary__chart-total-value {
+    fill: #d6d6d6;
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.pay-summary__chart-legend {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pay-summary__chart-legend li {
+    display: grid;
+    grid-template-columns: 10px 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #d4d4d4;
+}
+
+.pay-summary__chart-swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+}
+
+.pay-summary__chart-swatch--0 {
+    background: #4e94ce;
+}
+
+.pay-summary__chart-swatch--1 {
+    background: #89d7a9;
+}
+
+.pay-summary__chart-swatch--2 {
+    background: #f0c86a;
+}
+
+.pay-summary__chart-swatch--3 {
+    background: #d98b7c;
+}
+
+.pay-summary__chart-swatch--4 {
+    background: #9ca3af;
+}
+
+.pay-summary__chart-swatch--5 {
+    background: #6fb3a2;
+}
+
+.pay-summary__chart-employer {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pay-summary__chart-metric,
+.pay-summary__chart-percent {
+    color: #b9b9b9;
+    font-size: 11px;
+}
+
+.pay-summary__chart-empty {
+    margin: 0;
+    font-size: 12px;
+    color: #8f8f8f;
+}
+
+/* Premium rule lines */
+.pay-summary__rule-line {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 6px 12px;
+    background: #202020;
+    border: 1px solid #2a2a2a;
+}
+
+.pay-summary__rule-line-label {
+    font-size: 12px;
+    color: #b0b0b0;
+}
+
+.pay-summary__rule-line-values {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.pay-summary__rule-line-hours {
+    font-size: 11px;
+    color: #6f6f6f;
+}
+
+.pay-summary__rule-line-amount {
+    font-size: 13px;
+    font-weight: 600;
+    color: #89d7a9;
+}
+
+.pay-summary__rule-warning {
+    grid-column: 1 / -1;
+    padding: 6px 12px;
+    background: #2d281c;
+    border: 1px solid #7c632a;
+    color: #f0c86a;
+    font-size: 11px;
+}
+
+@media (min-width: 768px) {
+    .pay-summary {
+        padding: 20px;
+    }
+
+    .pay-summary__controls {
+        gap: 20px;
+    }
+
+    .pay-summary__cards {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    .pay-summary__chart-content {
+        grid-template-columns: 1fr;
+        justify-items: center;
+    }
+
+    .pay-summary__chart-legend {
+        width: 100%;
+    }
+
+    .pay-summary__chart-toggle {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .pay-summary__chart-header {
+        flex-direction: column;
+    }
+}

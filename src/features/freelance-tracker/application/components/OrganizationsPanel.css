@@ -1,0 +1,580 @@
+.organizations-panel {
+    background: #1e1e1e;
+    padding: 16px;
+    min-height: 100%;
+    color: #d4d4d4;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.organizations-panel__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.organizations-panel__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.organizations-panel__org-link {
+    background: transparent;
+    border: none;
+    color: #4e94ce;
+    text-decoration: underline;
+    text-align: left;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 2px 0;
+}
+
+.organizations-panel__org-link:hover {
+    color: #89b7dc;
+}
+
+.organizations-panel__modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1400;
+    padding: 12px;
+}
+
+.organizations-panel__modal {
+    width: min(860px, 100%);
+    max-height: calc(100vh - 24px);
+    overflow: auto;
+    background: #1f1f1f;
+    border: 1px solid #3a3a3a;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.organizations-panel__modal--ruleset {
+    width: min(820px, 100%);
+}
+
+.organizations-panel__modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.organizations-panel__modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.organizations-panel__modal-close {
+    background: transparent;
+    border: 1px solid #4a4a4a;
+    color: #d4d4d4;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+}
+
+.organizations-panel__details-grid {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.organizations-panel__details-grid--editable {
+    align-items: end;
+}
+
+.organizations-panel__details-grid dt {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #9d9d9d;
+}
+
+.organizations-panel__details-grid dd {
+    margin: 2px 0 0;
+    font-size: 13px;
+}
+
+.organizations-panel__catalogs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.organizations-panel__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.organizations-panel__section h4 {
+    margin: 0 0 8px;
+    font-size: 13px;
+}
+
+.organizations-panel__catalog-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+}
+
+.organizations-panel__catalog-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.organizations-panel__section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.organizations-panel__section-header--notes {
+    align-items: flex-start;
+}
+
+.organizations-panel__section-header h4 {
+    margin: 0;
+}
+
+.organizations-panel__catalog-item-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font-family: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+    padding: 0;
+    min-width: 0;
+}
+
+.organizations-panel__catalog-item-btn:hover,
+.organizations-panel__catalog-item-btn:focus {
+    color: #fff;
+    outline: none;
+}
+
+.organizations-panel__catalog-item-btn:hover .organizations-panel__catalog-meta,
+.organizations-panel__catalog-item-btn:focus
+    .organizations-panel__catalog-meta {
+    color: #b8b8b8;
+}
+
+.organizations-panel__catalog-card h5 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #d4d4d4;
+}
+
+.organizations-panel__catalog-new-btn {
+    background: #252526;
+    border: 1px solid #3a3a3a;
+    color: #d4d4d4;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.organizations-panel__catalog-new-btn:hover,
+.organizations-panel__catalog-new-btn:focus {
+    border-color: #555;
+    color: #fff;
+    outline: none;
+}
+
+.organizations-panel__catalog-editor-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.organizations-panel__catalog-cancel {
+    background: transparent;
+    border: 1px solid #3a3a3a;
+    color: #9d9d9d;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.organizations-panel__catalog-cancel:hover,
+.organizations-panel__catalog-cancel:focus {
+    border-color: #555;
+    color: #d4d4d4;
+    outline: none;
+}
+
+.organizations-panel__catalog-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.organizations-panel__catalog-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #202020;
+    border: 1px solid #333;
+    font-size: 12px;
+}
+
+.organizations-panel__catalog-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.organizations-panel__catalog-meta {
+    color: #9d9d9d;
+    font-size: 11px;
+}
+
+.organizations-panel__catalog-action {
+    border: 1px solid #4b3937;
+    background: transparent;
+    color: #d8a09b;
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.organizations-panel__catalog-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.organizations-panel__rulesets-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.organizations-panel__rulesets-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    gap: 10px;
+    font-size: 12px;
+    min-height: 0;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #d8d8d8;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__section {
+    padding: 12px;
+    gap: 10px;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__new-btn,
+.organizations-panel__rulesets-section .ruleset-editor__cancel,
+.organizations-panel__rulesets-section .ruleset-editor__delete,
+.organizations-panel__rulesets-section .ruleset-editor__edit-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+    min-height: 30px;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__list {
+    gap: 8px;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__card {
+    padding: 12px;
+}
+
+.organizations-panel__rulesets-section .ruleset-editor__card-actions {
+    padding: 0 12px 12px;
+}
+
+.organizations-panel__rulesets-header h4 {
+    margin: 0;
+    font-size: 13px;
+}
+
+.organizations-panel__new-ruleset {
+    border: 1px solid #3e3e42;
+    background: transparent;
+    color: #d4d4d4;
+    font-size: 11px;
+    padding: 4px 8px;
+    cursor: pointer;
+}
+
+.organizations-panel__ruleset-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.organizations-panel__ruleset-pill {
+    border: 1px solid #21506b;
+    background: #1d2d38;
+    color: #88c8eb;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.organizations-panel__field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.organizations-panel__field label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #9d9d9d;
+}
+
+.organizations-panel__field input,
+.organizations-panel__field textarea,
+.organizations-panel__field select {
+    background: #252526;
+    border: 1px solid #3e3e42;
+    color: #d4d4d4;
+    padding: 8px;
+    font-size: 12px;
+    font-family: inherit;
+}
+
+.organizations-panel__field textarea {
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+}
+
+.organizations-panel__notes-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 260px;
+}
+
+.organizations-panel__notes-editor,
+.organizations-panel__notes-panel .organizations-panel__markdown {
+    min-height: 260px;
+    height: 100%;
+}
+
+.organizations-panel__notes-editor textarea {
+    min-height: 228px;
+    height: 100%;
+    resize: vertical;
+}
+
+.organizations-panel__toggle {
+    display: inline-flex;
+    border: 1px solid #3a3a3a;
+    background: #1a1a1a;
+}
+
+.organizations-panel__toggle-button {
+    border: 0;
+    background: transparent;
+    color: #9d9d9d;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.organizations-panel__toggle-button + .organizations-panel__toggle-button {
+    border-left: 1px solid #3a3a3a;
+}
+
+.organizations-panel__toggle-button:hover,
+.organizations-panel__toggle-button:focus-visible {
+    color: #fff;
+    outline: none;
+    background: #252526;
+}
+
+.organizations-panel__toggle-button--active {
+    background: #2e2e2e;
+    color: #d4d4d4;
+}
+
+.organizations-panel__markdown {
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid #333;
+    background: #1a1a1a;
+    color: #d4d4d4;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.organizations-panel__markdown > :first-child {
+    margin-top: 0;
+}
+
+.organizations-panel__markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.organizations-panel__markdown h1,
+.organizations-panel__markdown h2,
+.organizations-panel__markdown h3,
+.organizations-panel__markdown h4,
+.organizations-panel__markdown h5,
+.organizations-panel__markdown h6 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.organizations-panel__markdown p,
+.organizations-panel__markdown ul,
+.organizations-panel__markdown ol,
+.organizations-panel__markdown blockquote,
+.organizations-panel__markdown pre {
+    margin: 0 0 8px;
+}
+
+.organizations-panel__markdown code {
+    font-family: "Menlo", "Consolas", "Monaco", monospace;
+    font-size: 11px;
+}
+
+.organizations-panel__markdown a {
+    color: #88c8eb;
+}
+
+.organizations-panel__markdown blockquote {
+    border-left: 2px solid #3a3a3a;
+    padding-left: 8px;
+    color: #bdbdbd;
+}
+
+.organizations-panel__rules-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.organizations-panel__rule-edit-card {
+    border: 1px solid #333;
+    background: #202020;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.organizations-panel__modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.organizations-panel__button {
+    border: 1px solid #3e3e42;
+    background: transparent;
+    color: #d4d4d4;
+    padding: 8px 12px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.organizations-panel__button--primary {
+    background: #007acc;
+    border-color: #007acc;
+    color: #fff;
+}
+
+.organizations-panel__button--secondary {
+    background: transparent;
+    border-color: #3e3e42;
+    color: #d4d4d4;
+}
+
+.organizations-panel__button--danger {
+    border-color: #b5605a;
+    color: #d8a09b;
+}
+
+.organizations-panel__button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.organizations-panel__empty {
+    margin: 0;
+    color: #9d9d9d;
+    font-size: 12px;
+}
+
+.organizations-panel__error {
+    margin: 0;
+    color: #f48771;
+    font-size: 12px;
+}
+
+@media (max-width: 720px) {
+    .organizations-panel__details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .organizations-panel__catalogs {
+        grid-template-columns: 1fr;
+    }
+
+    .organizations-panel__section-header--notes {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .organizations-panel__modal-actions {
+        flex-direction: column;
+    }
+
+    .organizations-panel__button {
+        width: 100%;
+    }
+}

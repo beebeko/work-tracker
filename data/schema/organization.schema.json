@@ -1,0 +1,107 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Organization Schema",
+    "description": "Organization (venue/client) record in the freelance tracker",
+    "type": "object",
+    "required": [
+        "organizationId",
+        "name",
+        "payPeriodStartDay",
+        "timezone",
+        "workweekStartDay",
+        "notes",
+        "venues",
+        "positions",
+        "createdAt"
+    ],
+    "properties": {
+        "organizationId": {
+            "type": "string",
+            "pattern": "^org-[a-z0-9]+$",
+            "description": "Unique identifier for the organization (branded Id)"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Organization name (e.g., 'Broadway Theatre', 'Corporate Venue')"
+        },
+        "payPeriodStartDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "Day of week when pay periods start (1=Monday, 7=Sunday; used for date-based pay period calculations)"
+        },
+        "timezone": {
+            "type": "string",
+            "pattern": "^[A-Za-z_/+-]*$",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Organization timezone (IANA timezone e.g., 'America/New_York'); defaults to 'UTC'",
+            "default": "UTC"
+        },
+        "workweekStartDay": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "Day of week when the organization's workweek starts (1=Monday, 7=Sunday; used for weekly OT calculations). Separate from payPeriodStartDay.",
+            "default": 1
+        },
+        "notes": {
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Optional markdown notes for the organization",
+            "default": null
+        },
+        "venues": {
+            "type": "array",
+            "description": "Organization-owned list of venue names associated with entries for this organization",
+            "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+            },
+            "default": []
+        },
+        "positions": {
+            "type": "array",
+            "description": "Organization-owned list of positions and optional default hourly rates",
+            "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 255
+                    },
+                    "defaultRate": {
+                        "oneOf": [
+                            {
+                                "type": "number",
+                                "minimum": 0
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "additionalProperties": false
+            },
+            "default": []
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 creation timestamp"
+        }
+    },
+    "additionalProperties": false
+}

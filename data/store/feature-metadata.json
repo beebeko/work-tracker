@@ -1,0 +1,49 @@
+{
+    "schemaVersion": "1.0",
+    "lastUpdated": "2026-04-18",
+    "projection": {
+        "markdownRegistryPath": "docs/features/registry.md",
+        "policy": "projection-only"
+    },
+    "features": [
+        {
+            "featureId": "F-004",
+            "name": "Feature Governance Automation",
+            "status": "planned",
+            "owner": "data-management",
+            "summary": "Automate feature-registry governance with a canonical metadata source and enforced parity between generated markdown and tracked metadata.",
+            "classification": "new-sensible",
+            "confidence": 0.96,
+            "scope": {
+                "includes": [
+                    "Canonical metadata source at data/store/feature-metadata.json",
+                    "Deterministic markdown projection into docs/features/registry.md",
+                    "Dual commit hooks: prepare-commit-msg and commit-msg",
+                    "CI digest-parity validation as a hard merge blocker",
+                    "Phased owner sequence: data-management -> backend -> testing-agent"
+                ],
+                "excludes": [
+                    "Changing feature classification policy semantics",
+                    "Bypassing preflight gatekeeping rules"
+                ]
+            },
+            "history": [
+                {
+                    "date": "2026-04-18",
+                    "requestSummary": "Accepted canonical history schema and approved implementation of governance automation with canonical metadata source, markdown projection, dual hooks, and CI digest-parity merge blocking.",
+                    "classification": "new-sensible",
+                    "confidence": 0.96,
+                    "actingAgent": "feature-tracker",
+                    "notes": "Owner sequence approved as data-management -> backend -> testing-agent."
+                }
+            ]
+        }
+    ],
+    "migration": {
+        "sourcePath": "docs/features/registry.md",
+        "sourceFormat": "registry-markdown-yaml-fence",
+        "sourceDigestSha256": "d6aa84e5b2cd41d535a00591100a02adc5ca3c6eb938040d810c9125f7f0678a",
+        "lastReportPath": "data/migrations/reports/f004-data-management-validation-report.json",
+        "capturedAt": "2026-04-19T03:41:09.997Z"
+    }
+}

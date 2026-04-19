@@ -1,0 +1,37 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2020", "ES2021.WeakRef", "DOM", "DOM.Iterable"],
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "allowJs": false,
+        "strict": true,
+        "forceConsistentCasingInFileNames": true,
+        "noEmit": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "jsx": "react-jsx",
+        "types": ["node"],
+        "paths": {
+            "@/*": ["./src/*"]
+        }
+    },
+    "include": [
+        "src",
+        "src/types/**/*.d.ts",
+        "playwright.config.ts",
+        "vite.config.mts",
+        "vitest.config.mts",
+        "vitest.components-tests.config.mts"
+    ],
+    "exclude": [
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx",
+        "src/**/__tests__/**",
+        "src/test/**",
+        "src/types/jest-dom.d.ts",
+        "tests/**"
+    ]
+}

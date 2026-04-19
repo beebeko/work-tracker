@@ -1,0 +1,267 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Ruleset Schema",
+    "description": "Organization pay ruleset with effective dating and immutable history",
+    "type": "object",
+    "required": [
+        "rulesetId",
+        "organizationId",
+        "effectiveDate",
+        "rules",
+        "createdAt"
+    ],
+    "properties": {
+        "rulesetId": {
+            "type": "string",
+            "pattern": "^ruleset-[a-z0-9]+$",
+            "description": "Unique identifier for the ruleset (branded Id)"
+        },
+        "organizationId": {
+            "type": "string",
+            "pattern": "^org-[a-z0-9]+$",
+            "description": "Organization this ruleset applies to"
+        },
+        "effectiveDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Date when ruleset becomes effective (YYYY-MM-DD). Immutable once created."
+        },
+        "rules": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Rule"
+            },
+            "description": "List of pay rules (daily OT, weekly OT, custom rules, etc.)"
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO 8601 creation timestamp. Immutable."
+        }
+    },
+    "additionalProperties": false,
+    "definitions": {
+        "Rule": {
+            "type": "object",
+            "required": ["ruleId", "type"],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$",
+                    "description": "Unique identifier for the rule within this ruleset"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "daily-overtime",
+                        "weekly-overtime",
+                        "meal-penalty",
+                        "holiday-rate",
+                        "time-window-multiplier",
+                        "custom"
+                    ],
+                    "description": "Rule type classifier"
+                }
+            },
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/DailyOvertimeRule"
+                },
+                {
+                    "$ref": "#/definitions/WeeklyOvertimeRule"
+                },
+                {
+                    "$ref": "#/definitions/MealPenaltyRule"
+                },
+                {
+                    "$ref": "#/definitions/HolidayRateRule"
+                },
+                {
+                    "$ref": "#/definitions/TimeWindowMultiplierRule"
+                },
+                {
+                    "$ref": "#/definitions/CustomRule"
+                }
+            ]
+        },
+        "DailyOvertimeRule": {
+            "type": "object",
+            "required": ["ruleId", "type", "dailyThresholdHours", "multiplier"],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "daily-overtime"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "dailyThresholdHours": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 24,
+                    "description": "Hours per day after which OT kicks in (e.g., 8)"
+                },
+                "multiplier": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 3,
+                    "description": "Pay multiplier for OT (e.g., 1.5 for time-and-a-half)"
+                }
+            },
+            "additionalProperties": false
+        },
+        "WeeklyOvertimeRule": {
+            "type": "object",
+            "required": [
+                "ruleId",
+                "type",
+                "weeklyThresholdHours",
+                "multiplier"
+            ],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "weekly-overtime"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "weeklyThresholdHours": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 168,
+                    "description": "Hours per week after which OT kicks in (e.g., 40)"
+                },
+                "multiplier": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 3,
+                    "description": "Pay multiplier for OT (e.g., 1.5 for time-and-a-half)"
+                }
+            },
+            "additionalProperties": false
+        },
+        "MealPenaltyRule": {
+            "type": "object",
+            "required": ["ruleId", "type", "penaltyAmount"],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "meal-penalty"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "penaltyAmount": {
+                    "type": "number",
+                    "minimum": 0
+                }
+            },
+            "additionalProperties": false
+        },
+        "HolidayRateRule": {
+            "type": "object",
+            "required": ["ruleId", "type", "holidayDates", "multiplier"],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "holiday-rate"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "holidayDates": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                    }
+                },
+                "multiplier": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 3
+                }
+            },
+            "additionalProperties": false
+        },
+        "TimeWindowMultiplierRule": {
+            "type": "object",
+            "required": [
+                "ruleId",
+                "type",
+                "windowStart",
+                "windowEnd",
+                "multiplier"
+            ],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "time-window-multiplier"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "windowStart": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "windowEnd": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "multiplier": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 3
+                }
+            },
+            "additionalProperties": false
+        },
+        "CustomRule": {
+            "type": "object",
+            "required": ["ruleId", "type", "scope", "condition", "payout"],
+            "properties": {
+                "ruleId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9-]+$"
+                },
+                "type": {
+                    "const": "custom"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string",
+                    "enum": ["position", "tag", "date-range", "event"],
+                    "description": "What dimension(s) this rule applies to"
+                },
+                "condition": {
+                    "type": "object",
+                    "description": "DSL-based condition block: predefined scope/condition/payout building blocks"
+                },
+                "payout": {
+                    "type": "object",
+                    "description": "DSL-based payout block: defines multiplier, flat fee, hours adjustment, etc."
+                }
+            },
+            "additionalProperties": false
+        }
+    }
+}

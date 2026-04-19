@@ -1,0 +1,55 @@
+html,
+body,
+#root {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #1b1b1b;
+}
+
+.app-startup-gate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 24px;
+    background: #1b1b1b;
+    color: #d4d4d4;
+    text-align: center;
+    gap: 8px;
+}
+
+.app-startup-gate__status {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.app-startup-gate__message {
+    margin: 0;
+    color: #b8b8b8;
+    font-size: 13px;
+}
+
+.app-startup-gate__retry {
+    margin-top: 8px;
+    border: 1px solid #3a3a3a;
+    background: #2d2d2d;
+    color: #d4d4d4;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.app-startup-gate__retry:hover {
+    border-color: #4e94ce;
+}
+
+.app-startup-gate__retry:focus {
+    outline: 2px solid #4e94ce;
+    outline-offset: 2px;
+}

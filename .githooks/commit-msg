@@ -1,0 +1,6 @@
+#!/bin/bash
+# .githooks/commit-msg
+# Minimal shim: invoke Node.js hook script
+# Invoked by Git after commit message is edited
+
+exec node scripts/f004-routing/hook-commit-msg.mjs "$@"
