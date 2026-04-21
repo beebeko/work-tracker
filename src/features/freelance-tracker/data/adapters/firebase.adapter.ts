@@ -902,6 +902,13 @@ class FirebaseAdapterContext {
 
     async getScope(): Promise<Result<FirebaseScope>> {
         if (this.cachedScope) {
+            const currentUid = await ensureAnonymousUser().catch(() => null);
+            if (currentUid && currentUid !== this.cachedScope.uid) {
+                this.cachedScope = {
+                    db: this.cachedScope.db,
+                    uid: currentUid,
+                };
+            }
             return ok(this.cachedScope);
         }
 

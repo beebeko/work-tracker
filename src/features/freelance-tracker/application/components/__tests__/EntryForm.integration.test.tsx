@@ -21,6 +21,7 @@ const updateEntry = vi.fn();
 const createOrganization = vi.fn();
 const loadSharedRulesets = vi.fn();
 const organizationId = testId("org");
+const sharedRulesetId = testId("shared-ruleset");
 
 const store = {
     organizations: [
@@ -95,10 +96,19 @@ describe("EntryForm integration", () => {
         window.matchMedia = createMatchMedia(false) as typeof window.matchMedia;
         store.error = null;
         store.loading = false;
+        store.sharedRulesets = [
+            {
+                rulesetId: sharedRulesetId,
+                effectiveDate: "2026-09-01",
+                rules: [],
+                createdAt: new Date().toISOString(),
+            },
+        ];
         createEntry.mockResolvedValue({
             success: true,
             data: { entryId: testId("entry") },
         });
+        loadSharedRulesets.mockResolvedValue(undefined);
         createOrganization.mockResolvedValue({
             success: true,
             data: {
@@ -235,6 +245,74 @@ describe("EntryForm integration", () => {
                 rulesetIds: [],
             });
         });
+    });
+
+    it("loads shared rulesets and submits selected shared ruleset ids when saving a new organization", async () => {
+        const user = userEvent.setup();
+        render(<EntryForm />);
+
+        const organization = screen.getByLabelText(/organization/i);
+        fireEvent.change(organization, {
+            target: { value: "Org With Ruleset" },
+        });
+
+        await user.click(
+            screen.getByRole("button", { name: /add organization/i }),
+        );
+
+        expect(loadSharedRulesets).toHaveBeenCalledTimes(1);
+
+        await user.click(
+            screen.getByRole("checkbox", { name: /effective 2026-09-01/i }),
+        );
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        await waitFor(() => {
+            expect(createOrganization).toHaveBeenCalledWith({
+                name: "Org With Ruleset",
+                payPeriodStartDay: 1,
+                timezone: "UTC",
+                workweekStartDay: 1,
+                notes: null,
+                rulesetIds: [sharedRulesetId],
+            });
+        });
+    });
+
+    it("keeps the add-organization modal open and surfaces async permission errors", async () => {
+        const user = userEvent.setup();
+        createOrganization.mockResolvedValueOnce({
+            success: false,
+            error: {
+                type: "io",
+                message:
+                    "PERMISSION_DENIED: Missing or insufficient permissions.",
+            },
+        });
+
+        render(<EntryForm />);
+
+        const organization = screen.getByLabelText(/organization/i);
+        fireEvent.change(organization, { target: { value: "Org Denied" } });
+
+        await user.click(
+            screen.getByRole("button", { name: /add organization/i }),
+        );
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        expect(
+            await screen.findByText(
+                /permission_denied: missing or insufficient permissions\./i,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { name: /new organization/i }),
+        ).toBeInTheDocument();
+        expect(organization).toHaveValue("Org Denied");
     });
 
     it("does not show create prompt for duplicate organization names with different case/spacing", async () => {

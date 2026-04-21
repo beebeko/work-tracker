@@ -4,8 +4,8 @@ Current state:
 
 ```yaml
 version: "1.0"
-last_updated: "2026-04-18"
-next_feature_sequence: 5
+last_updated: "2026-04-21"
+next_feature_sequence: 6
 
 features:
     - feature_id: "F-001"
@@ -318,7 +318,22 @@ features:
             classification: "existing"
             confidence: 0.99
             acting_agent: "feature-tracker"
+          - date: "2026-04-21"
+            request_summary: "Fix emulator-only Firestore PERMISSION_DENIED in new organization modal ruleset save flow by aligning auth/rules evaluation and ruleset assignment write-path behavior with F-002 expectations."
+            classification: "existing"
+            confidence: 0.96
+            acting_agent: "data-management"
             notes: "Port scan confirmed no active Firestore emulator bind conflict on 8080 (hosting remains on 5002; macOS Control Center on 5000 is non-impacting). Full six-step gate passed: npm ci, lint, tsc --noEmit, vitest, firestore rules emulator tests, and Playwright (48/48)."
+          - date: "2026-04-21"
+            request_summary: "Testing specialist coverage review and gap-fill for the emulator-only add-organization ruleset PERMISSION_DENIED bugfix path in F-002."
+            classification: "existing"
+            confidence: 0.98
+            acting_agent: "testing-agent"
+            test_scope:
+                - "Integration: add-organization modal verifies shared-ruleset selection submission and async PERMISSION_DENIED error visibility/recovery state."
+                - "Unit: Firebase adapter validates creating organizations with preselected shared-ruleset IDs, missing-ruleset rejection, and IO-denied write handling."
+                - "Firestore rules emulator: token-claim alias access (uid/user_id/sub) succeeds for users/{uid}/... while unauthenticated/cross-user and non-users path reads/writes are denied."
+            coverage_impact: "Expanded F-002 behavioral and failure-path coverage around organization/ruleset association and rules access-model guardrails; strengthened emulator-specific regression confidence for PERMISSION_DENIED class issues."
           - date: "2026-04-19"
             request_summary: "Fresh F-002 release-readiness rerun executed in strict checklist order with explicit exit-code capture and safe emulator-port preflight (8080/9099/5002)."
             classification: "existing"
@@ -331,6 +346,35 @@ features:
             confidence: 0.98
             acting_agent: "testing-agent"
             notes: "Production host responded HTTP 200. Read-only smoke slice passed on desktop-chromium (15/15) for startup/sync/navigation/selector interactions. Firefox/WebKit cross-engine smoke not executed in this quick pass due local Playwright project config exposing desktop-chromium/mobile-chromium only."
+          - date: "2026-04-21"
+            request_summary: "Approved follow-up to add a dedicated emulator-backed Playwright route and validate add-organization with shared and new ruleset attachment across Chromium, Firefox, and WebKit."
+            classification: "existing"
+            confidence: 0.99
+            acting_agent: "testing-agent"
+            test_scope:
+                - "Added dedicated emulator-mode Playwright config/project matrix (Chromium, Firefox, WebKit) behind firebase-tools emulators:exec wiring."
+                - "Added focused emulator E2E spec covering add-organization flow with both pre-existing shared-ruleset attachment and newly authored shared-ruleset attachment in the same journey."
+            coverage_impact: "Expanded F-002 browser-compatibility evidence for emulator-backed write-path behavior and reduced flake risk by isolating deterministic emulator run configuration from broader JSON-mode E2E suites."
+          - date: "2026-04-21"
+            request_summary: "Complete WebKit emulator E2E fix cycle for add-organization plus shared-ruleset attach flow by reproducing cross-browser instability, tightening emulator-run determinism, and validating project-specific + combined Playwright emulator runs."
+            classification: "existing"
+            confidence: 0.97
+            acting_agent: "testing-agent"
+            evidence:
+                - "Root cause validated: intermittent emulator WebKit close-wait timeout while save remained in progress; direct runs were sensitive to emulator/preview timing and required deterministic webServer startup for emulator config runs."
+                - "Patch set: emulator Playwright config now always launches a fresh webServer; E2E spec save-path waits were tuned for slower WebKit emulator sync/close completion."
+                - "Verification evidence: emulator-chromium pass, emulator-firefox pass, emulator-webkit pass, and combined playwright.emulator.config.ts run passed 3/3."
+          - date: "2026-04-21"
+            request_summary: "Add WebKit latency drift detection and alerting to the emulator-backed Playwright suite to surface WebKit slowdowns before they reach CI timeout boundaries."
+            classification: "existing"
+            confidence: 0.97
+            acting_agent: "testing-agent"
+            test_scope:
+                - "Added per-run WebKit elapsed-time capture via test.beforeAll/test.afterAll hooks in the emulator spec describe block."
+                - "Configurable threshold defaulting to 45000ms, overridable via WEBKIT_EMULATOR_THRESHOLD_MS env var."
+                - "Warn-only alert with distinct [WEBKIT-LATENCY-ALERT] marker line plus measured-vs-threshold output; escalation to fail-fast via single commented line."
+                - "Lightweight JSON timing artifact persisted to test-results/webkit-emulator-timing.json per run for trend tracking."
+            coverage_impact: "Harness hardening only — no product-code changes. Adds observability layer to catch WebKit emulator drift early without introducing false-positive test failures."
 
     - feature_id: "F-003"
       name: "Invoice PDF Generation v2"
@@ -466,6 +510,66 @@ features:
             confidence: 0.98
             acting_agent: "backend"
             notes: "Expanded .gitignore with minimal Node/Vite/test/log/system/editor noise patterns while leaving tracked artifacts unaffected, then captured one-shot smoke output for hooks path, branch, and concise status."
+
+    - feature_id: "F-005"
+      name: "Google Inbox & Calendar Gig Import"
+      status: "planned"
+      owner: "unassigned"
+      summary: "Allow users to connect their Google account so the app can scan Gmail for gig offers and confirmations from specified senders/domains, and pull events from Google Calendar, parse them into candidate shift records, present a user-review queue, and issue warnings when scheduled shifts have no matching logged entry."
+      classification: "new-sensible"
+      confidence: 0.88
+      scope:
+          includes:
+              - "Google OAuth sign-in (replaces anonymous auth when user opts in)"
+              - "Gmail read-only scan filtered by user-configured sender addresses or domains"
+              - "Email body parsing to extract candidate shift date, time, position, and venue"
+              - "Google Calendar read-only event import filtered by date window"
+              - "Candidate shift review queue: accept, edit, or ignore each import"
+              - "One-click promote: accepted candidates create a pre-filled Entry via existing DAL"
+              - "Warning engine: flag calendar/email shifts with no matching logged entry"
+              - "Per-organization sender/domain filter configuration"
+              - "Sync status indicators for Gmail and Calendar import state"
+          excludes:
+              - "Gmail write access (no sending, labeling, or deleting)"
+              - "Calendar write access (read-only import only)"
+              - "Automated entry creation without user review"
+              - "Raw email body storage (only extracted structured fields persisted)"
+              - "Multi-user or shared-calendar collaboration"
+              - "Push/webhook-based real-time sync (polling only in v1)"
+              - "Google Workspace admin scopes"
+      goal_alignments: []
+      dependencies:
+          - feature_id: "F-001"
+            relationship: "requires"
+          - feature_id: "F-002"
+            relationship: "requires"
+      conflicts_with: []
+      change_plan:
+          - action: "create-feature"
+            description: "Deliver Gmail and Google Calendar read-only import pipeline with candidate review queue and shift-coverage warning engine"
+            steps:
+                - "Auth: extend Firebase auth to support Google OAuth sign-in with gmail.readonly and calendar.readonly scopes; store OAuth tokens server-side only (Firebase Functions or similar); never in localStorage or Firestore client documents"
+                - "Data: add CandidateShift and GigImportConfig domain types to contracts/types.ts; add ICandidateShiftRepository and IGigImportConfigRepository to DAL contracts; implement in Firebase adapter"
+                - "Backend: implement Gmail scan service (sender/domain filter + structured field extraction with confidence scoring); implement Calendar event import service; add deduplication and match-against-existing-entries logic"
+                - "Domain: add warning-engine service that diffs candidate shifts against logged entries for a date window and emits ShiftCoverageWarning records"
+                - "React UI: add Inbox/Calendar tab to FreelanceTrackerApp; build candidate review queue component (accept/edit/ignore); build shift-coverage warnings panel; add Google account connection settings"
+                - "Testing: unit tests for email parser, calendar mapper, dedup logic, and warning engine; integration tests for candidate-to-entry promote flow; E2E for connect → scan → review → promote journey"
+            dependency_updates:
+                - "F-002 must be active (Firebase auth + Firestore) before this feature can be implemented"
+                - "F-001 entry DAL create action is the promotion target for accepted candidates"
+            risks:
+                - "Gmail sensitive scope requires Google OAuth app verification for non-personal use; adds review/approval lead time"
+                - "Email parsing accuracy varies by sender template; confidence scoring and mandatory review step mitigate silent bad imports"
+                - "OAuth token management surface must be carefully audited against OWASP A02 (Cryptographic Failures) and A05 (Security Misconfiguration)"
+                - "Calendar-only MVP reduces scope risk and can ship independently before Gmail parsing is ready"
+            validation_owner: "product"
+      history:
+          - date: "2026-04-21"
+            request_summary: "User requested Gmail and Google Calendar integration to surface gig offers, booking confirmations, and scheduled shifts as importable candidates with a user review step and shift-coverage warnings."
+            classification: "new-sensible"
+            confidence: 0.88
+            acting_agent: "feature-tracker"
+            notes: "Phased delivery recommended: Calendar import first (cleaner data), then Gmail sender/domain parsing, then full warning engine. Google OAuth app verification timeline is a key external dependency to plan around early."
 ```
 
 Feature record template:
