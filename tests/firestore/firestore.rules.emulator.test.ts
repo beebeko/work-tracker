@@ -47,6 +47,16 @@ describe("firestore.rules guardrails", () => {
         await assertSucceeds(getDoc(ownEntryRef));
     });
 
+    it("denies access when authenticated uid does not match path-scoped user id", async () => {
+        const db = testEnvironment
+            .authenticatedContext("session-user")
+            .firestore();
+        const mismatchedPathRef = doc(db, "users/alice/entries/entry-mismatch");
+
+        await assertFails(setDoc(mismatchedPathRef, { minutes: 10 }));
+        await assertFails(getDoc(mismatchedPathRef));
+    });
+
     it("denies cross-user and non-users document paths", async () => {
         const db = testEnvironment.authenticatedContext("alice").firestore();
         const unauthenticatedDb = testEnvironment
@@ -60,7 +70,10 @@ describe("firestore.rules guardrails", () => {
         );
 
         await assertFails(getDoc(otherUserEntryRef));
+        await assertFails(setDoc(otherUserEntryRef, { minutes: 60 }));
         await assertFails(getDoc(nonUsersPathRef));
+        await assertFails(setDoc(nonUsersPathRef, { name: "Nope" }));
         await assertFails(getDoc(unauthenticatedOwnPathRef));
+        await assertFails(setDoc(unauthenticatedOwnPathRef, { minutes: 45 }));
     });
 });

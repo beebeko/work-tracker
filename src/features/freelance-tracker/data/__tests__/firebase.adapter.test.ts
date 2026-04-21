@@ -535,6 +535,74 @@ describe("FirebaseDataLayer", () => {
         );
     });
 
+    it("creates a new organization with preselected shared ruleset associations", async () => {
+        const dal = new FirebaseDataLayer();
+        const sharedRuleset = await dal.rulesets.create({
+            effectiveDate: "2026-09-01",
+            rules: [],
+        });
+        if (!sharedRuleset.success) throw new Error("ruleset create failed");
+
+        const organization = await dal.organizations.create({
+            name: "Org With Shared Ruleset",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+            rulesetIds: [sharedRuleset.data.rulesetId],
+        });
+
+        expect(organization.success).toBe(true);
+        if (!organization.success) return;
+        expect(organization.data.rulesetIds).toEqual([
+            sharedRuleset.data.rulesetId,
+        ]);
+
+        const listedForOrg = await dal.rulesets.listByOrg(
+            organization.data.organizationId,
+        );
+        expect(listedForOrg.success).toBe(true);
+        if (!listedForOrg.success) return;
+        expect(listedForOrg.data.map((ruleset) => ruleset.rulesetId)).toEqual([
+            sharedRuleset.data.rulesetId,
+        ]);
+    });
+
+    it("rejects organization create when referenced shared ruleset id does not exist", async () => {
+        const dal = new FirebaseDataLayer();
+
+        const organization = await dal.organizations.create({
+            name: "Org With Missing Ruleset",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+            rulesetIds: ["ruleset-missing" as any],
+        });
+
+        expect(organization.success).toBe(false);
+        if (organization.success) return;
+        expect(organization.error.type).toBe("notFound");
+        if (organization.error.type !== "notFound") return;
+        expect(organization.error.entityType).toBe("Ruleset");
+    });
+
+    it("returns io error when organization create write is denied by external boundary", async () => {
+        const dal = new FirebaseDataLayer();
+        firestoreState.failSetDocOnPath = "users/uid-test/organizations/";
+
+        const created = await dal.organizations.create({
+            name: "Denied Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+
+        expect(created.success).toBe(false);
+        if (created.success) return;
+        expect(created.error.type).toBe("io");
+        if (created.error.type !== "io") return;
+        expect(created.error.message).toContain("organization create");
+    });
+
     it("removes organization ruleset references when deleting a shared ruleset", async () => {
         const dal = new FirebaseDataLayer();
         const organization = await dal.organizations.create({
