@@ -419,6 +419,12 @@ features:
             validation_owner: "testing-agent"
       history:
           - date: "2026-04-21"
+            request_summary: "PR traceability follow-up record after direct main push to preserve explicit F-004 governance/audit linkage."
+            classification: "existing"
+            confidence: 0.96
+            acting_agent: "backend"
+
+          - date: "2026-04-21"
             request_summary: "Accepted secondary governance linkage for the approved F-001 local commit creation step, recording F-004 traceability for parity-enforced closeout handling."
             classification: "existing"
             confidence: 0.94
