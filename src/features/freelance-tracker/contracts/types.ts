@@ -47,7 +47,15 @@ export type Organization = {
     notes?: string | null; // markdown-supported organization notes
     venues: string[];
     positions: OrganizationPosition[];
+    rulesetIds: Id[]; // top-level rulesets associated with this organization
     createdAt: string; // ISO 8601
+};
+
+export type CreateOrganizationInput = Omit<
+    Organization,
+    "organizationId" | "createdAt" | "rulesetIds"
+> & {
+    rulesetIds?: Id[];
 };
 
 /** TagHistory tracks all unique tags ever used */
@@ -142,13 +150,20 @@ export type Rule =
     | TimeWindowMultiplierRule
     | CustomRule;
 
-/** Ruleset: effective-dated, immutable collection of rules for an organization */
+/** Ruleset: effective-dated, reusable top-level collection of pay rules */
 export type Ruleset = {
     rulesetId: Id;
-    organizationId: Id;
     effectiveDate: string; // YYYY-MM-DD; first date this ruleset applies
     rules: Rule[]; // Policy: at most one daily-overtime OR one weekly-overtime rule per ruleset
     createdAt: string; // ISO 8601; immutable
+    organizationId?: Id; // legacy/back-compat input only; new persistence uses Organization.rulesetIds
+};
+
+export type CreateRulesetInput = Omit<
+    Ruleset,
+    "rulesetId" | "createdAt" | "organizationId"
+> & {
+    organizationId?: Id;
 };
 
 /**

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EntryForm } from "../EntryForm";
 import { testId } from "../../../test-utils/fixtures";
@@ -19,6 +19,7 @@ const createMatchMedia = (isSingleColumnLayout: boolean) =>
 const createEntry = vi.fn();
 const updateEntry = vi.fn();
 const createOrganization = vi.fn();
+const loadSharedRulesets = vi.fn();
 const organizationId = testId("org");
 
 const store = {
@@ -40,10 +41,13 @@ const store = {
     ],
     loading: false,
     error: null,
+    sharedRulesets: [],
     createEntry,
     createOrganization,
     updateEntry,
     loadHistories: vi.fn(),
+    loadSharedRulesets,
+    getSharedRulesetAssignmentSummary: () => [],
 };
 
 const entryFormHook = {
@@ -199,20 +203,38 @@ describe("EntryForm integration", () => {
         expect(screen.getByText(/save failed/i)).toBeInTheDocument();
     });
 
-    it("shows manage prompt for unknown organization and triggers callback", async () => {
+    it("shows add prompt for unknown organization and saves from modal", async () => {
         const user = userEvent.setup();
-        const onManageOrganization = vi.fn();
-        render(<EntryForm onManageOrganization={onManageOrganization} />);
+        render(<EntryForm />);
 
         const organization = screen.getByLabelText(/organization/i);
         fireEvent.change(organization, { target: { value: "Org B" } });
 
         await user.click(
-            screen.getByRole("button", { name: /manage organizations/i }),
+            screen.getByRole("button", { name: /add organization/i }),
         );
 
-        expect(onManageOrganization).toHaveBeenCalledTimes(1);
-        expect(createOrganization).not.toHaveBeenCalled();
+        expect(
+            screen.getByRole("heading", { name: /new organization/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText(/organization name/i)).toHaveValue(
+            "Org B",
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        await waitFor(() => {
+            expect(createOrganization).toHaveBeenCalledWith({
+                name: "Org B",
+                payPeriodStartDay: 1,
+                timezone: "UTC",
+                workweekStartDay: 1,
+                notes: null,
+                rulesetIds: [],
+            });
+        });
     });
 
     it("does not show create prompt for duplicate organization names with different case/spacing", async () => {
@@ -224,7 +246,7 @@ describe("EntryForm integration", () => {
         });
 
         expect(
-            screen.queryByRole("button", { name: /manage organizations/i }),
+            screen.queryByRole("button", { name: /add organization/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -237,14 +259,13 @@ describe("EntryForm integration", () => {
         await user.type(organization, "   ");
 
         expect(
-            screen.queryByRole("button", { name: /manage organizations/i }),
+            screen.queryByRole("button", { name: /add organization/i }),
         ).not.toBeInTheDocument();
     });
 
-    it("renders manage prompt text with normalized typed organization name", async () => {
+    it("renders add prompt text with normalized typed organization name", async () => {
         const user = userEvent.setup();
-        const onManageOrganization = vi.fn();
-        render(<EntryForm onManageOrganization={onManageOrganization} />);
+        render(<EntryForm />);
 
         const organization = screen.getByLabelText(/organization/i);
         await user.clear(organization);
@@ -253,7 +274,9 @@ describe("EntryForm integration", () => {
         expect(screen.getByText(/no organization named/i)).toHaveTextContent(
             'No organization named "New Org".',
         );
-        expect(onManageOrganization).not.toHaveBeenCalled();
+        expect(
+            screen.getByRole("button", { name: /add organization/i }),
+        ).toBeInTheDocument();
     });
 
     it("lets single-column layout users choose existing values from combo boxes without typing", async () => {

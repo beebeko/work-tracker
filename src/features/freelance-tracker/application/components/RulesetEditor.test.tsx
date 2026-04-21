@@ -7,6 +7,20 @@ import type { Rule } from "@/features/freelance-tracker/contracts/types";
 const mockUseFreelanceTracker = vi.hoisted(() => vi.fn());
 
 const createStore = () => ({
+    organizations: [
+        {
+            organizationId: "org-1",
+            name: "Alpha Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+            notes: null,
+            venues: [],
+            positions: [],
+            rulesetIds: ["ruleset-1"],
+            createdAt: "2025-12-01T00:00:00.000Z",
+        },
+    ],
     rulesets: [
         {
             rulesetId: "ruleset-1",
@@ -53,7 +67,76 @@ const createStore = () => ({
             createdAt: "2025-12-01T00:00:00.000Z",
         },
     ],
+    sharedRulesets: [
+        {
+            rulesetId: "ruleset-1",
+            effectiveDate: "2026-01-01",
+            rules: [
+                {
+                    ruleId: "daily-ot-rule",
+                    type: "daily-overtime",
+                    description: "Daily OT",
+                    dailyThresholdHours: 8,
+                    multiplier: 1.5,
+                },
+            ] satisfies Rule[],
+            createdAt: "2025-12-01T00:00:00.000Z",
+        },
+        {
+            rulesetId: "ruleset-2",
+            effectiveDate: "2026-02-01",
+            rules: [
+                {
+                    ruleId: "meal-rule-2",
+                    type: "meal-penalty",
+                    description: "Meal",
+                    penaltyAmount: 20,
+                },
+            ] satisfies Rule[],
+            createdAt: "2025-12-02T00:00:00.000Z",
+        },
+    ],
     loadRulesets: vi.fn().mockResolvedValue(undefined),
+    loadSharedRulesets: vi.fn().mockResolvedValue(undefined),
+    getSharedRulesetAssignmentSummary: vi.fn(() => [
+        {
+            ruleset: {
+                rulesetId: "ruleset-1",
+                effectiveDate: "2026-01-01",
+                rules: [
+                    {
+                        ruleId: "daily-ot-rule",
+                        type: "daily-overtime",
+                        description: "Daily OT",
+                        dailyThresholdHours: 8,
+                        multiplier: 1.5,
+                    },
+                ] satisfies Rule[],
+                createdAt: "2025-12-01T00:00:00.000Z",
+            },
+            assignedOrganizationIds: ["org-1"],
+            assignedOrganizationCount: 1,
+            isAssigned: true,
+        },
+        {
+            ruleset: {
+                rulesetId: "ruleset-2",
+                effectiveDate: "2026-02-01",
+                rules: [
+                    {
+                        ruleId: "meal-rule-2",
+                        type: "meal-penalty",
+                        description: "Meal",
+                        penaltyAmount: 20,
+                    },
+                ] satisfies Rule[],
+                createdAt: "2025-12-02T00:00:00.000Z",
+            },
+            assignedOrganizationIds: [],
+            assignedOrganizationCount: 0,
+            isAssigned: false,
+        },
+    ]),
     createRuleset: vi.fn().mockResolvedValue({
         success: true,
         data: {
@@ -298,5 +381,17 @@ describe("RulesetEditor", () => {
             screen.getByText("Custom rule condition JSON is invalid."),
         ).toBeInTheDocument();
         expect(mockStore.createRuleset).not.toHaveBeenCalled();
+    });
+
+    it("shows assigned and unassigned states in shared ruleset list when enabled", () => {
+        render(<RulesetEditor scope="shared" showAssignmentSummary />);
+
+        expect(mockStore.loadSharedRulesets).toHaveBeenCalledTimes(1);
+        expect(
+            screen.getByText("Used by 1 organization: Alpha Org"),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Not assigned to any organization."),
+        ).toBeInTheDocument();
     });
 });

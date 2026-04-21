@@ -18,6 +18,8 @@ import {
 
 import type {
     DalError,
+    CreateRulesetInput,
+    CreateOrganizationInput,
     Entry,
     Id,
     Organization,
@@ -222,6 +224,54 @@ function normalizeStoredOrganization(organization: Organization): Organization {
             typeof organization.notes === "string" ? organization.notes : null,
         venues: organization.venues ?? [],
         positions: organization.positions ?? [],
+        rulesetIds: Array.isArray(organization.rulesetIds)
+            ? Array.from(new Set(organization.rulesetIds))
+            : [],
+    };
+}
+
+function normalizeStoredRuleset(
+    ruleset: Ruleset & { organizationId?: Id },
+): Ruleset {
+    const { organizationId: _legacyOrganizationId, ...normalized } = ruleset;
+    return normalized;
+}
+
+function resolveRulesetAssociations(
+    organizations: Organization[],
+    rulesets: Array<Ruleset & { organizationId?: Id }>,
+): { organizations: Organization[]; rulesets: Ruleset[] } {
+    const rulesetIdsByOrg = new Map<Id, Id[]>();
+    const normalizedRulesets = rulesets.map((ruleset) => {
+        if (ruleset.organizationId) {
+            const existing = rulesetIdsByOrg.get(ruleset.organizationId) ?? [];
+            existing.push(ruleset.rulesetId);
+            rulesetIdsByOrg.set(ruleset.organizationId, existing);
+        }
+
+        return normalizeStoredRuleset(ruleset);
+    });
+
+    const knownRulesetIds = new Set(
+        normalizedRulesets.map((ruleset) => ruleset.rulesetId),
+    );
+
+    return {
+        organizations: organizations.map((organization) => {
+            const current = Array.isArray(organization.rulesetIds)
+                ? organization.rulesetIds.filter((rulesetId) =>
+                      knownRulesetIds.has(rulesetId),
+                  )
+                : [];
+            const derived =
+                rulesetIdsByOrg.get(organization.organizationId) ?? [];
+
+            return normalizeStoredOrganization({
+                ...organization,
+                rulesetIds: Array.from(new Set([...current, ...derived])),
+            });
+        }),
+        rulesets: normalizedRulesets,
     };
 }
 
@@ -407,6 +457,11 @@ function validateMigratedOrganization(
                   }))
                   .filter((position) => position.name.length > 0)
             : [],
+        rulesetIds: Array.isArray(candidate.rulesetIds)
+            ? candidate.rulesetIds.filter(
+                  (rulesetId): rulesetId is Id => typeof rulesetId === "string",
+              )
+            : [],
     } as Organization;
 
     if (!validateOrganization(normalizeStoredOrganization(migrated))) {
@@ -468,8 +523,8 @@ function validateMigratedVenue(
 function validateMigratedRuleset(
     candidate: unknown,
     index: number,
-): Result<Ruleset> {
-    if (!isRecord(candidate) || !validateRuleset(candidate)) {
+): Result<Ruleset & { organizationId?: Id }> {
+    if (!isRecord(candidate)) {
         return err({
             type: "validation",
             message: `Local ruleset at index ${index} failed schema validation`,
@@ -477,7 +532,19 @@ function validateMigratedRuleset(
         });
     }
 
-    return ok(candidate as Ruleset);
+    const normalized = normalizeStoredRuleset(
+        candidate as Ruleset & { organizationId?: Id },
+    );
+
+    if (!validateRuleset(normalized)) {
+        return err({
+            type: "validation",
+            message: `Local ruleset at index ${index} failed schema validation`,
+            field: `${LOCAL_RULESETS_KEY}[${index}]`,
+        });
+    }
+
+    return ok(candidate as Ruleset & { organizationId?: Id });
 }
 
 function loadLocalMigrationPayload(
@@ -567,7 +634,7 @@ function loadLocalMigrationPayload(
         venues.push(result.data);
     }
 
-    const rulesets: Ruleset[] = [];
+    const rulesets: Array<Ruleset & { organizationId?: Id }> = [];
     for (let i = 0; i < rulesetsRaw.data.length; i += 1) {
         const result = validateMigratedRuleset(rulesetsRaw.data[i], i);
         if (!result.success) {
@@ -576,13 +643,18 @@ function loadLocalMigrationPayload(
         rulesets.push(result.data);
     }
 
+    const resolvedAssociations = resolveRulesetAssociations(
+        organizations,
+        rulesets as Array<Ruleset & { organizationId?: Id }>,
+    );
+
     return ok({
         entries,
-        organizations,
+        organizations: resolvedAssociations.organizations,
         tags,
         positions,
         venues,
-        rulesets,
+        rulesets: resolvedAssociations.rulesets,
     });
 }
 
@@ -724,6 +796,104 @@ function userCollection(scope: FirebaseScope, collectionName: string) {
 
 function userDoc(scope: FirebaseScope, collectionName: string, id: string) {
     return doc(scope.db, "users", scope.uid, collectionName, id);
+}
+
+async function readOrganizationRecord(
+    scope: FirebaseScope,
+    organizationId: Id,
+): Promise<Result<Organization | null>> {
+    try {
+        const snapshot = await getDoc(
+            userDoc(scope, COLLECTIONS.organizations, organizationId),
+        );
+
+        if (!snapshot.exists()) {
+            return ok(null);
+        }
+
+        return ok(normalizeStoredOrganization(snapshot.data() as Organization));
+    } catch (error) {
+        return err(ioError("organization get", error));
+    }
+}
+
+async function validateOrganizationRulesetReferences(
+    scope: FirebaseScope,
+    rulesetIds: Id[],
+): Promise<Result<void>> {
+    for (const rulesetId of Array.from(new Set(rulesetIds))) {
+        try {
+            const snapshot = await getDoc(
+                userDoc(scope, COLLECTIONS.rulesets, rulesetId),
+            );
+            if (!snapshot.exists()) {
+                return notFound("Ruleset", rulesetId);
+            }
+        } catch (error) {
+            return err(ioError("organization ruleset validation", error));
+        }
+    }
+
+    return ok(undefined);
+}
+
+async function readRulesetsForOrganization(
+    scope: FirebaseScope,
+    organizationId: Id,
+): Promise<Result<Ruleset[]>> {
+    const organizationResult = await readOrganizationRecord(
+        scope,
+        organizationId,
+    );
+    if (!organizationResult.success) {
+        return organizationResult as Result<Ruleset[]>;
+    }
+
+    if (!organizationResult.data) {
+        return ok([]);
+    }
+
+    const rulesetsById = new Map<Id, Ruleset>();
+
+    for (const rulesetId of organizationResult.data.rulesetIds) {
+        try {
+            const snapshot = await getDoc(
+                userDoc(scope, COLLECTIONS.rulesets, rulesetId),
+            );
+            if (snapshot.exists()) {
+                const normalized = normalizeStoredRuleset(
+                    snapshot.data() as Ruleset & { organizationId?: Id },
+                );
+                rulesetsById.set(normalized.rulesetId, normalized);
+            }
+        } catch (error) {
+            return err(ioError("ruleset listByOrg", error));
+        }
+    }
+
+    try {
+        const legacySnapshots = await getDocs(
+            query(
+                userCollection(scope, COLLECTIONS.rulesets),
+                where("organizationId", "==", organizationId),
+            ),
+        );
+
+        for (const snapshot of legacySnapshots.docs) {
+            const normalized = normalizeStoredRuleset(
+                snapshot.data() as Ruleset & { organizationId?: Id },
+            );
+            rulesetsById.set(normalized.rulesetId, normalized);
+        }
+    } catch (error) {
+        return err(ioError("ruleset legacy listByOrg", error));
+    }
+
+    return ok(
+        Array.from(rulesetsById.values()).sort((a, b) =>
+            b.effectiveDate.localeCompare(a.effectiveDate),
+        ),
+    );
 }
 
 class FirebaseAdapterContext {
@@ -944,9 +1114,7 @@ class FirebaseEntryRepository implements IEntryRepository {
 class FirebaseOrganizationRepository implements IOrganizationRepository {
     constructor(private context: FirebaseAdapterContext) {}
 
-    async create(
-        org: Omit<Organization, "organizationId" | "createdAt">,
-    ): Promise<Result<Organization>> {
+    async create(org: CreateOrganizationInput): Promise<Result<Organization>> {
         const scope = await this.context.getScope();
         if (!scope.success) {
             return scope;
@@ -959,9 +1127,18 @@ class FirebaseOrganizationRepository implements IOrganizationRepository {
             notes: org.notes ?? null,
             venues: org.venues ?? [],
             positions: org.positions ?? [],
+            rulesetIds: Array.from(new Set(org.rulesetIds ?? [])),
             organizationId: genId("org"),
             createdAt: nowIso(),
         };
+
+        const rulesetValidation = await validateOrganizationRulesetReferences(
+            scope.data,
+            created.rulesetIds,
+        );
+        if (!rulesetValidation.success) {
+            return rulesetValidation;
+        }
 
         if (!validateOrganization(normalizeStoredOrganization(created))) {
             return err({
@@ -1058,9 +1235,21 @@ class FirebaseOrganizationRepository implements IOrganizationRepository {
             const next: Organization = {
                 ...current,
                 ...update,
+                rulesetIds: Array.from(
+                    new Set(update.rulesetIds ?? current.rulesetIds ?? []),
+                ),
                 organizationId,
                 createdAt: current.createdAt,
             };
+
+            const rulesetValidation =
+                await validateOrganizationRulesetReferences(
+                    scope.data,
+                    next.rulesetIds,
+                );
+            if (!rulesetValidation.success) {
+                return rulesetValidation;
+            }
 
             if (!validateOrganization(normalizeStoredOrganization(next))) {
                 return err({
@@ -1403,9 +1592,7 @@ class FirebaseVenueHistoryRepository implements IVenueHistoryRepository {
 class FirebaseRulesetRepository implements IRulesetRepository {
     constructor(private context: FirebaseAdapterContext) {}
 
-    async create(
-        ruleset: Omit<Ruleset, "rulesetId" | "createdAt">,
-    ): Promise<Result<Ruleset>> {
+    async create(ruleset: CreateRulesetInput): Promise<Result<Ruleset>> {
         const scope = await this.context.getScope();
         if (!scope.success) {
             return scope;
@@ -1433,9 +1620,10 @@ class FirebaseRulesetRepository implements IRulesetRepository {
             }
         }
 
+        const { organizationId, ...rulesetBody } = ruleset;
         const created: Ruleset = {
             rulesetId: genId("ruleset"),
-            ...ruleset,
+            ...rulesetBody,
             createdAt: nowIso(),
         };
 
@@ -1448,10 +1636,65 @@ class FirebaseRulesetRepository implements IRulesetRepository {
         }
 
         try {
-            await setDoc(
-                userDoc(scope.data, COLLECTIONS.rulesets, created.rulesetId),
-                created,
-            );
+            if (organizationId) {
+                const organizationResult = await readOrganizationRecord(
+                    scope.data,
+                    organizationId,
+                );
+                if (!organizationResult.success) {
+                    return organizationResult as Result<Ruleset>;
+                }
+                if (!organizationResult.data) {
+                    return notFound("Organization", organizationId);
+                }
+
+                const nextOrganization = normalizeStoredOrganization({
+                    ...organizationResult.data,
+                    rulesetIds: Array.from(
+                        new Set([
+                            ...organizationResult.data.rulesetIds,
+                            created.rulesetId,
+                        ]),
+                    ),
+                });
+
+                if (!validateOrganization(nextOrganization)) {
+                    return err({
+                        type: "validation",
+                        message:
+                            "Organization validation failed after associating ruleset",
+                        field: "organization.rulesetIds",
+                    });
+                }
+
+                const batch = writeBatch(scope.data.db);
+                batch.set(
+                    userDoc(
+                        scope.data,
+                        COLLECTIONS.rulesets,
+                        created.rulesetId,
+                    ),
+                    created,
+                );
+                batch.set(
+                    userDoc(
+                        scope.data,
+                        COLLECTIONS.organizations,
+                        organizationId,
+                    ),
+                    nextOrganization,
+                );
+                await batch.commit();
+            } else {
+                await setDoc(
+                    userDoc(
+                        scope.data,
+                        COLLECTIONS.rulesets,
+                        created.rulesetId,
+                    ),
+                    created,
+                );
+            }
             return ok(created);
         } catch (error) {
             return err(ioError("ruleset create", error));
@@ -1472,7 +1715,11 @@ class FirebaseRulesetRepository implements IRulesetRepository {
                 return notFound("Ruleset", rulesetId);
             }
 
-            return ok(snapshot.data() as Ruleset);
+            return ok(
+                normalizeStoredRuleset(
+                    snapshot.data() as Ruleset & { organizationId?: Id },
+                ),
+            );
         } catch (error) {
             return err(ioError("ruleset getById", error));
         }
@@ -1487,25 +1734,19 @@ class FirebaseRulesetRepository implements IRulesetRepository {
             return scope;
         }
 
-        try {
-            const snapshots = await getDocs(
-                query(
-                    userCollection(scope.data, COLLECTIONS.rulesets),
-                    where("organizationId", "==", params.organizationId),
-                    where("effectiveDate", "<=", params.onDate),
-                    orderBy("effectiveDate", "desc"),
-                    limit(1),
-                ),
-            );
-
-            if (snapshots.docs.length === 0) {
-                return ok(null);
-            }
-
-            return ok(snapshots.docs[0].data() as Ruleset);
-        } catch (error) {
-            return err(ioError("ruleset getActive", error));
+        const rulesets = await readRulesetsForOrganization(
+            scope.data,
+            params.organizationId,
+        );
+        if (!rulesets.success) {
+            return rulesets;
         }
+
+        return ok(
+            rulesets.data.find(
+                (ruleset) => ruleset.effectiveDate <= params.onDate,
+            ) ?? null,
+        );
     }
 
     async listByOrg(organizationId: Id): Promise<Result<Ruleset[]>> {
@@ -1514,20 +1755,35 @@ class FirebaseRulesetRepository implements IRulesetRepository {
             return scope;
         }
 
+        return readRulesetsForOrganization(scope.data, organizationId);
+    }
+
+    async listAll(): Promise<Result<Ruleset[]>> {
+        const scope = await this.context.getScope();
+        if (!scope.success) {
+            return scope;
+        }
+
         try {
             const snapshots = await getDocs(
-                query(
-                    userCollection(scope.data, COLLECTIONS.rulesets),
-                    where("organizationId", "==", organizationId),
-                    orderBy("effectiveDate", "desc"),
-                ),
+                userCollection(scope.data, COLLECTIONS.rulesets),
             );
 
             return ok(
-                snapshots.docs.map((snapshot) => snapshot.data() as Ruleset),
+                snapshots.docs
+                    .map((snapshot) =>
+                        normalizeStoredRuleset(
+                            snapshot.data() as Ruleset & {
+                                organizationId?: Id;
+                            },
+                        ),
+                    )
+                    .sort((a, b) =>
+                        b.effectiveDate.localeCompare(a.effectiveDate),
+                    ),
             );
         } catch (error) {
-            return err(ioError("ruleset listByOrg", error));
+            return err(ioError("ruleset listAll", error));
         }
     }
 
@@ -1544,7 +1800,36 @@ class FirebaseRulesetRepository implements IRulesetRepository {
                 return notFound("Ruleset", rulesetId);
             }
 
-            await deleteDoc(docRef);
+            const organizationsSnapshot = await getDocs(
+                query(
+                    userCollection(scope.data, COLLECTIONS.organizations),
+                    where("rulesetIds", "array-contains", rulesetId),
+                ),
+            );
+
+            const batch = writeBatch(scope.data.db);
+            batch.delete(docRef);
+
+            for (const organizationSnapshot of organizationsSnapshot.docs) {
+                const organization = normalizeStoredOrganization(
+                    organizationSnapshot.data() as Organization,
+                );
+                batch.set(
+                    userDoc(
+                        scope.data,
+                        COLLECTIONS.organizations,
+                        organization.organizationId,
+                    ),
+                    normalizeStoredOrganization({
+                        ...organization,
+                        rulesetIds: organization.rulesetIds.filter(
+                            (candidate) => candidate !== rulesetId,
+                        ),
+                    }),
+                );
+            }
+
+            await batch.commit();
             return ok(undefined);
         } catch (error) {
             return err(ioError("ruleset delete", error));
@@ -1801,9 +2086,7 @@ class FirebaseTransactionalEntryRepository implements IEntryRepository {
 class FirebaseTransactionalOrganizationRepository implements IOrganizationRepository {
     constructor(private buffer: FirebaseTransactionalBuffer) {}
 
-    async create(
-        org: Omit<Organization, "organizationId" | "createdAt">,
-    ): Promise<Result<Organization>> {
+    async create(org: CreateOrganizationInput): Promise<Result<Organization>> {
         const created: Organization = {
             ...org,
             timezone: org.timezone ?? "UTC",
@@ -1811,9 +2094,29 @@ class FirebaseTransactionalOrganizationRepository implements IOrganizationReposi
             notes: org.notes ?? null,
             venues: org.venues ?? [],
             positions: org.positions ?? [],
+            rulesetIds: Array.from(new Set(org.rulesetIds ?? [])),
             organizationId: genId("org"),
             createdAt: nowIso(),
         };
+
+        for (const rulesetId of created.rulesetIds) {
+            const ruleset = await this.buffer.readDoc<Ruleset>(
+                COLLECTIONS.rulesets,
+                rulesetId,
+            );
+            if (!ruleset.success) {
+                this.buffer.markOperationFailure(
+                    "organizations.create ruleset lookup failed",
+                );
+                return ruleset as Result<Organization>;
+            }
+            if (!ruleset.data) {
+                this.buffer.markOperationFailure(
+                    "organizations.create missing ruleset reference",
+                );
+                return notFound("Ruleset", rulesetId);
+            }
+        }
 
         if (!validateOrganization(normalizeStoredOrganization(created))) {
             this.buffer.markOperationFailure(
@@ -1877,9 +2180,31 @@ class FirebaseTransactionalOrganizationRepository implements IOrganizationReposi
         const next: Organization = {
             ...normalizeStoredOrganization(current.data),
             ...update,
+            rulesetIds: Array.from(
+                new Set(update.rulesetIds ?? current.data.rulesetIds ?? []),
+            ),
             organizationId,
             createdAt: current.data.createdAt,
         };
+
+        for (const rulesetId of next.rulesetIds) {
+            const ruleset = await this.buffer.readDoc<Ruleset>(
+                COLLECTIONS.rulesets,
+                rulesetId,
+            );
+            if (!ruleset.success) {
+                this.buffer.markOperationFailure(
+                    "organizations.update ruleset lookup failed",
+                );
+                return ruleset as Result<Organization>;
+            }
+            if (!ruleset.data) {
+                this.buffer.markOperationFailure(
+                    "organizations.update missing ruleset reference",
+                );
+                return notFound("Ruleset", rulesetId);
+            }
+        }
 
         if (!validateOrganization(normalizeStoredOrganization(next))) {
             this.buffer.markOperationFailure(
@@ -2131,9 +2456,7 @@ class FirebaseTransactionalVenueHistoryRepository implements IVenueHistoryReposi
 class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
     constructor(private buffer: FirebaseTransactionalBuffer) {}
 
-    async create(
-        ruleset: Omit<Ruleset, "rulesetId" | "createdAt">,
-    ): Promise<Result<Ruleset>> {
+    async create(ruleset: CreateRulesetInput): Promise<Result<Ruleset>> {
         const otRules = ruleset.rules.filter(
             (rule) =>
                 rule.type === "daily-overtime" ||
@@ -2159,9 +2482,10 @@ class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
             }
         }
 
+        const { organizationId, ...rulesetBody } = ruleset;
         const created: Ruleset = {
             rulesetId: genId("ruleset"),
-            ...ruleset,
+            ...rulesetBody,
             createdAt: nowIso(),
         };
 
@@ -2174,6 +2498,54 @@ class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
                 message: "Ruleset validation failed",
                 field: "ruleset",
             });
+        }
+
+        if (organizationId) {
+            const organization = await this.buffer.readDoc<Organization>(
+                COLLECTIONS.organizations,
+                organizationId,
+            );
+            if (!organization.success) {
+                this.buffer.markOperationFailure(
+                    "rulesets.create organization lookup failed",
+                );
+                return organization as Result<Ruleset>;
+            }
+            if (!organization.data) {
+                this.buffer.markOperationFailure(
+                    "rulesets.create missing organization reference",
+                );
+                return notFound("Organization", organizationId);
+            }
+
+            const nextOrganization = normalizeStoredOrganization({
+                ...organization.data,
+                rulesetIds: Array.from(
+                    new Set([
+                        ...normalizeStoredOrganization(organization.data)
+                            .rulesetIds,
+                        created.rulesetId,
+                    ]),
+                ),
+            });
+
+            if (!validateOrganization(nextOrganization)) {
+                this.buffer.markOperationFailure(
+                    "rulesets.create organization association validation failed",
+                );
+                return err({
+                    type: "validation",
+                    message:
+                        "Organization validation failed after associating ruleset",
+                    field: "organization.rulesetIds",
+                });
+            }
+
+            this.buffer.queueSet(
+                COLLECTIONS.organizations,
+                organizationId,
+                nextOrganization,
+            );
         }
 
         this.buffer.queueSet(COLLECTIONS.rulesets, created.rulesetId, created);
@@ -2192,7 +2564,11 @@ class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
         if (!current.data) {
             return notFound("Ruleset", rulesetId);
         }
-        return ok(current.data);
+        return ok(
+            normalizeStoredRuleset(
+                current.data as Ruleset & { organizationId?: Id },
+            ),
+        );
     }
 
     async getActive(_params: {
@@ -2212,6 +2588,13 @@ class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
         );
     }
 
+    async listAll(): Promise<Result<Ruleset[]>> {
+        return unsupportedTransactionOperation<Ruleset[]>(
+            this.buffer,
+            "rulesets.listAll",
+        );
+    }
+
     async delete(rulesetId: Id): Promise<Result<void>> {
         const current = await this.buffer.readDoc<Ruleset>(
             COLLECTIONS.rulesets,
@@ -2225,8 +2608,10 @@ class FirebaseTransactionalRulesetRepository implements IRulesetRepository {
             return notFound("Ruleset", rulesetId);
         }
 
-        this.buffer.queueDelete(COLLECTIONS.rulesets, rulesetId);
-        return ok(undefined);
+        return unsupportedTransactionOperation<void>(
+            this.buffer,
+            "rulesets.delete",
+        );
     }
 }
 

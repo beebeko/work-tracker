@@ -5,7 +5,11 @@
 
 // Store
 export { default as useFreelanceTrackerStore } from "./store";
-export type { FreelanceTrackerStore } from "./store";
+export type {
+    FreelanceTrackerStore,
+    SharedRulesetAssignmentSummary,
+    SharedRulesetAssignmentFilter,
+} from "./store";
 
 // Hooks
 export {

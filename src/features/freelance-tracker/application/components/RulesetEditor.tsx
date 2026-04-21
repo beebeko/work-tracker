@@ -39,16 +39,30 @@ import { NonOTRuleRow } from "./NonOTRuleRow";
 import { RulesetCard } from "./RulesetCard";
 import "./RulesetEditor.css";
 
+const sanitizeRuleForPersistence = (rule: Rule): Rule => {
+    if (!("description" in rule) || rule.description !== undefined) {
+        return rule;
+    }
+
+    const { description: _description, ...withoutDescription } = rule;
+    return withoutDescription as Rule;
+};
+
 // ── main component ──────────────────────────────────────────────────────────
 
 export type RulesetEditorProps = {
-    organizationId: Id;
+    organizationId?: Id;
+    scope?: "organization" | "shared";
+    showAssignmentSummary?: boolean;
 };
 
 export const RulesetEditor: React.FC<RulesetEditorProps> = ({
     organizationId,
+    scope = "organization",
+    showAssignmentSummary = false,
 }) => {
     const store = useFreelanceTracker();
+    const isOrganizationScope = scope === "organization";
 
     const [view, setView] = useState<"list" | "create" | "edit">("list");
     const [saving, setSaving] = useState(false);
@@ -67,11 +81,36 @@ export const RulesetEditor: React.FC<RulesetEditorProps> = ({
 
     // Load rulesets for this org
     useEffect(() => {
-        void store.loadRulesets(organizationId);
-    }, [organizationId, store.loadRulesets]);
+        if (isOrganizationScope) {
+            if (!organizationId) {
+                return;
+            }
 
-    const rulesets = store.rulesets.filter(
-        (rs) => rs.organizationId === organizationId,
+            void store.loadRulesets(organizationId);
+            return;
+        }
+
+        void store.loadSharedRulesets();
+    }, [
+        isOrganizationScope,
+        organizationId,
+        store.loadRulesets,
+        store.loadSharedRulesets,
+    ]);
+
+    const rulesets = isOrganizationScope
+        ? store.rulesets.filter((rs) => rs.organizationId === organizationId)
+        : store.sharedRulesets;
+    const sharedAssignmentByRulesetId = new Map(
+        store
+            .getSharedRulesetAssignmentSummary()
+            .map((summary) => [summary.ruleset.rulesetId, summary]),
+    );
+    const organizationNameById = new Map(
+        store.organizations.map((organization) => [
+            organization.organizationId,
+            organization.name,
+        ]),
     );
     const activeRuleset = rulesets[0] ?? null; // newest-first per DAL contract
 
@@ -203,6 +242,8 @@ export const RulesetEditor: React.FC<RulesetEditorProps> = ({
         const rules = validateAndCollectRules();
         if (!rules) return;
 
+        const sanitizedRules = rules.map(sanitizeRuleForPersistence);
+
         setSaving(true);
         try {
             if (view === "edit" && editingRulesetId) {
@@ -217,13 +258,19 @@ export const RulesetEditor: React.FC<RulesetEditorProps> = ({
             }
 
             const result = await store.createRuleset({
-                organizationId,
                 effectiveDate,
-                rules,
+                rules: sanitizedRules,
+                ...(isOrganizationScope && organizationId
+                    ? { organizationId }
+                    : {}),
             });
 
             if (result.success) {
-                await store.loadRulesets(organizationId);
+                if (isOrganizationScope && organizationId) {
+                    await store.loadRulesets(organizationId);
+                } else {
+                    await store.loadSharedRulesets();
+                }
                 setView("list");
                 resetForm();
             } else {
@@ -244,7 +291,11 @@ export const RulesetEditor: React.FC<RulesetEditorProps> = ({
         try {
             const result = await store.deleteRuleset(editingRulesetId);
             if (result.success) {
-                await store.loadRulesets(organizationId);
+                if (isOrganizationScope && organizationId) {
+                    await store.loadRulesets(organizationId);
+                } else {
+                    await store.loadSharedRulesets();
+                }
                 setView("list");
                 resetForm();
                 return;
@@ -448,6 +499,70 @@ export const RulesetEditor: React.FC<RulesetEditorProps> = ({
                         }}
                     >
                         <RulesetCard ruleset={rs} isActive={i === 0} />
+                        {!isOrganizationScope && showAssignmentSummary && (
+                            <div
+                                className="ruleset-editor__assignment-summary"
+                                data-testid="shared-ruleset-assignment-summary"
+                            >
+                                {(() => {
+                                    const summary =
+                                        sharedAssignmentByRulesetId.get(
+                                            rs.rulesetId,
+                                        );
+                                    const assignedOrganizationIds =
+                                        summary?.assignedOrganizationIds ?? [];
+                                    const assignedOrganizationCount =
+                                        summary?.assignedOrganizationCount ?? 0;
+
+                                    if (assignedOrganizationCount === 0) {
+                                        return (
+                                            <>
+                                                <span className="ruleset-editor__assignment-badge ruleset-editor__assignment-badge--unassigned">
+                                                    Unassigned
+                                                </span>
+                                                <span className="ruleset-editor__assignment-text">
+                                                    Not assigned to any
+                                                    organization.
+                                                </span>
+                                            </>
+                                        );
+                                    }
+
+                                    const assignedOrganizationNames =
+                                        assignedOrganizationIds
+                                            .map((id) =>
+                                                organizationNameById.get(id),
+                                            )
+                                            .filter(
+                                                (
+                                                    candidate,
+                                                ): candidate is string =>
+                                                    Boolean(candidate),
+                                            );
+                                    const orgLabel =
+                                        assignedOrganizationCount === 1
+                                            ? "organization"
+                                            : "organizations";
+
+                                    return (
+                                        <>
+                                            <span className="ruleset-editor__assignment-badge ruleset-editor__assignment-badge--assigned">
+                                                Assigned
+                                            </span>
+                                            <span className="ruleset-editor__assignment-text">
+                                                Used by{" "}
+                                                {assignedOrganizationCount}{" "}
+                                                {orgLabel}
+                                                {assignedOrganizationNames.length >
+                                                0
+                                                    ? `: ${assignedOrganizationNames.join(", ")}`
+                                                    : "."}
+                                            </span>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

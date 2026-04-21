@@ -385,6 +385,18 @@ describe("FirebaseDataLayer", () => {
         const sentinel = storage.getItem(localStorageKeys.sentinel);
         expect(sentinel).toBeTruthy();
         expect(String(sentinel)).toContain('"version":1');
+
+        const migratedOrganization = firestoreState.docs.get(
+            "users/uid-test/organizations/org-migrate0001",
+        ) as Record<string, unknown> | undefined;
+        const migratedRuleset = firestoreState.docs.get(
+            "users/uid-test/rulesets/ruleset-migrate0001",
+        ) as Record<string, unknown> | undefined;
+
+        expect(migratedOrganization?.rulesetIds).toEqual([
+            "ruleset-migrate0001",
+        ]);
+        expect(migratedRuleset?.organizationId).toBeUndefined();
     });
 
     it("skips migration writes when sentinel already exists", async () => {
@@ -479,7 +491,131 @@ describe("FirebaseDataLayer", () => {
             notes: null,
             venues: [],
             positions: [],
+            rulesetIds: ["ruleset-migrate0001"],
         });
+    });
+
+    it("associates a newly created ruleset to the provided organization while storing the ruleset as a top-level shared doc", async () => {
+        const dal = new FirebaseDataLayer();
+        const organization = await dal.organizations.create({
+            name: "Ruleset Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!organization.success)
+            throw new Error("organization create failed");
+
+        const createdRuleset = await dal.rulesets.create({
+            organizationId: organization.data.organizationId,
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+
+        expect(createdRuleset.success).toBe(true);
+        if (!createdRuleset.success) return;
+        expect(createdRuleset.data.organizationId).toBeUndefined();
+
+        const refreshedOrganization = await dal.organizations.get(
+            organization.data.organizationId,
+        );
+        expect(refreshedOrganization.success).toBe(true);
+        if (!refreshedOrganization.success) return;
+        expect(refreshedOrganization.data.rulesetIds).toEqual([
+            createdRuleset.data.rulesetId,
+        ]);
+
+        const listedRulesets = await dal.rulesets.listByOrg(
+            organization.data.organizationId,
+        );
+        expect(listedRulesets.success).toBe(true);
+        if (!listedRulesets.success) return;
+        expect(listedRulesets.data.map((ruleset) => ruleset.rulesetId)).toEqual(
+            [createdRuleset.data.rulesetId],
+        );
+    });
+
+    it("removes organization ruleset references when deleting a shared ruleset", async () => {
+        const dal = new FirebaseDataLayer();
+        const organization = await dal.organizations.create({
+            name: "Delete Ruleset Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!organization.success)
+            throw new Error("organization create failed");
+
+        const createdRuleset = await dal.rulesets.create({
+            organizationId: organization.data.organizationId,
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+        if (!createdRuleset.success) throw new Error("ruleset create failed");
+
+        const deleted = await dal.rulesets.delete(
+            createdRuleset.data.rulesetId,
+        );
+        expect(deleted.success).toBe(true);
+
+        const refreshedOrganization = await dal.organizations.get(
+            organization.data.organizationId,
+        );
+        expect(refreshedOrganization.success).toBe(true);
+        if (!refreshedOrganization.success) return;
+        expect(refreshedOrganization.data.rulesetIds).toEqual([]);
+    });
+
+    it("lists all shared rulesets in effective-date order for assignment selection", async () => {
+        const dal = new FirebaseDataLayer();
+        const orgA = await dal.organizations.create({
+            name: "Ruleset List Org A",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        const orgB = await dal.organizations.create({
+            name: "Ruleset List Org B",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!orgA.success || !orgB.success) {
+            throw new Error("organization create failed");
+        }
+
+        const sharedLatest = await dal.rulesets.create({
+            organizationId: orgA.data.organizationId,
+            effectiveDate: "2026-06-01",
+            rules: [],
+        });
+        const sharedMiddle = await dal.rulesets.create({
+            organizationId: orgB.data.organizationId,
+            effectiveDate: "2026-05-01",
+            rules: [],
+        });
+        const unassociatedOldest = await dal.rulesets.create({
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+
+        if (
+            !sharedLatest.success ||
+            !sharedMiddle.success ||
+            !unassociatedOldest.success
+        ) {
+            throw new Error("ruleset create failed");
+        }
+
+        const listed = await dal.rulesets.listAll();
+        expect(listed.success).toBe(true);
+        if (!listed.success) return;
+
+        expect(listed.data.map((ruleset) => ruleset.rulesetId)).toEqual([
+            sharedLatest.data.rulesetId,
+            sharedMiddle.data.rulesetId,
+            unassociatedOldest.data.rulesetId,
+        ]);
     });
 
     it("round-trips entries and maps stored date field back to dateWorked", async () => {

@@ -15,6 +15,7 @@ describe("IDataLayer contract compliance", () => {
         expect(dal.positions).toBeDefined();
         expect(dal.venues).toBeDefined();
         expect(dal.transaction).toBeDefined();
+        expect(hasFunction(dal.rulesets, "listAll")).toBe(true);
 
         expect(hasFunction(dal, "initialize")).toBe(true);
         expect(hasFunction(dal, "dispose")).toBe(true);

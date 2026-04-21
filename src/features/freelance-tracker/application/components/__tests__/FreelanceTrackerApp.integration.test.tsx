@@ -59,6 +59,10 @@ vi.mock("../OrganizationsPanel", () => ({
     ),
 }));
 
+vi.mock("../SharedRulesetsPanel", () => ({
+    SharedRulesetsPanel: () => <h2>Shared Rulesets</h2>,
+}));
+
 const loadOrganizations = vi.fn();
 const loadHistories = vi.fn();
 const loadRulesets = vi.fn();
@@ -130,6 +134,9 @@ describe("FreelanceTrackerApp integration", () => {
         expect(
             screen.getByRole("button", { name: /pay summary/i }),
         ).toBeInTheDocument();
+        expect(
+            screen.getAllByRole("button", { name: "Rulesets" }).length,
+        ).toBeGreaterThan(0);
         expect(
             screen.getAllByRole("button", { name: "Organization" }),
         ).toHaveLength(2);

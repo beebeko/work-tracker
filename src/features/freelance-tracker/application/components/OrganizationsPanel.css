@@ -252,6 +252,24 @@
     font-size: 12px;
 }
 
+.organizations-panel__shared-ruleset-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.organizations-panel__shared-ruleset-option input {
+    margin: 0;
+}
+
+.organizations-panel__shared-ruleset-builder {
+    border: 1px solid #333;
+    background: #1a1a1a;
+    padding: 10px;
+}
+
 .organizations-panel__catalog-copy {
     display: flex;
     flex-direction: column;

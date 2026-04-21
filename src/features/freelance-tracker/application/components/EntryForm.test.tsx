@@ -73,7 +73,11 @@ const createLegacyMatchMediaController = (isSingleColumnLayout: boolean) => {
 
 const mockCreateEntry = vi.hoisted(() => vi.fn());
 const mockUpdateEntry = vi.hoisted(() => vi.fn());
+const mockCreateOrganization = vi.hoisted(() => vi.fn());
+const mockCreateRuleset = vi.hoisted(() => vi.fn());
 const mockCreateOrganizationPosition = vi.hoisted(() => vi.fn());
+const mockLoadSharedRulesets = vi.hoisted(() => vi.fn());
+const mockStoreError = vi.hoisted(() => ({ value: null as string | null }));
 const mockStoreState = vi.hoisted(() => ({
     loading: false,
     organizations: [
@@ -85,6 +89,21 @@ const mockStoreState = vi.hoisted(() => ({
             workweekStartDay: 1,
             venues: ["Main Hall"],
             positions: [{ name: "Sound Tech", defaultRate: 150 }],
+            rulesetIds: [],
+            createdAt: new Date().toISOString(),
+        },
+    ],
+    sharedRulesets: [
+        {
+            rulesetId: "ruleset-shared-1",
+            effectiveDate: "2026-01-01",
+            rules: [
+                {
+                    ruleId: "meal-rule-1",
+                    type: "meal-penalty",
+                    penaltyAmount: 25,
+                },
+            ],
             createdAt: new Date().toISOString(),
         },
     ],
@@ -96,11 +115,16 @@ vi.mock("../hooks", () => {
     return {
         useFreelanceTracker: () => ({
             organizations: mockStoreState.organizations,
+            sharedRulesets: mockStoreState.sharedRulesets,
+            getSharedRulesetAssignmentSummary: () => [],
             entries: [],
             loading: mockStoreState.loading,
-            error: null,
+            error: mockStoreError.value,
             createEntry: mockCreateEntry,
+            createOrganization: mockCreateOrganization,
+            createRuleset: mockCreateRuleset,
             createOrganizationPosition: mockCreateOrganizationPosition,
+            loadSharedRulesets: mockLoadSharedRulesets,
             updateEntry: mockUpdateEntry,
             setEditingEntry: vi.fn(),
             loadHistories: vi.fn(),
@@ -178,6 +202,7 @@ describe("EntryForm", () => {
         vi.clearAllMocks();
         window.matchMedia = createMatchMedia(false) as typeof window.matchMedia;
         mockStoreState.loading = false;
+        mockStoreError.value = null;
         mockStoreState.organizations = [
             {
                 organizationId: "org-test-1",
@@ -187,6 +212,21 @@ describe("EntryForm", () => {
                 workweekStartDay: 1,
                 venues: ["Main Hall"],
                 positions: [{ name: "Sound Tech", defaultRate: 150 }],
+                rulesetIds: [],
+                createdAt: new Date().toISOString(),
+            },
+        ];
+        mockStoreState.sharedRulesets = [
+            {
+                rulesetId: "ruleset-shared-1",
+                effectiveDate: "2026-01-01",
+                rules: [
+                    {
+                        ruleId: "meal-rule-1",
+                        type: "meal-penalty",
+                        penaltyAmount: 25,
+                    },
+                ],
                 createdAt: new Date().toISOString(),
             },
         ];
@@ -241,6 +281,39 @@ describe("EntryForm", () => {
                     { name: "Lighting Director", defaultRate: 120 },
                 ],
             },
+        });
+        mockCreateOrganization.mockResolvedValue({
+            success: true,
+            data: {
+                organizationId: "org-new-1",
+                name: "New Org",
+                payPeriodStartDay: 1,
+                timezone: "UTC",
+                workweekStartDay: 1,
+                notes: null,
+                venues: [],
+                positions: [],
+                rulesetIds: [],
+                createdAt: new Date().toISOString(),
+            },
+        });
+        mockCreateRuleset.mockImplementation(async (input) => {
+            const createdRuleset = {
+                rulesetId: "ruleset-shared-created",
+                effectiveDate: input.effectiveDate,
+                rules: input.rules,
+                createdAt: new Date().toISOString(),
+            };
+
+            mockStoreState.sharedRulesets = [
+                createdRuleset,
+                ...mockStoreState.sharedRulesets,
+            ];
+
+            return {
+                success: true,
+                data: createdRuleset,
+            };
         });
     });
 
@@ -684,7 +757,7 @@ describe("EntryForm", () => {
         ).not.toBeInTheDocument();
     });
 
-    it("shows organization routing action for missing organization", async () => {
+    it("opens add-organization modal for unknown organization and prefills typed name", async () => {
         const user = userEvent.setup();
         const onManageOrganization = vi.fn();
 
@@ -693,20 +766,150 @@ describe("EntryForm", () => {
         const organizationInput = screen.getByLabelText(
             /organization/i,
         ) as HTMLInputElement;
+        await user.clear(organizationInput);
         await user.type(organizationInput, "New Org");
 
         expect(
             screen.getByRole("button", {
-                name: /manage organizations/i,
+                name: /add organization/i,
             }),
         ).toBeInTheDocument();
 
         await user.click(
+            screen.getByRole("button", { name: /add organization/i }),
+        );
+
+        expect(
+            screen.getByRole("heading", { name: /new organization/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText(/organization name/i)).toHaveValue(
+            "New Org",
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        await waitFor(() => {
+            expect(mockCreateOrganization).toHaveBeenCalledWith({
+                name: "New Org",
+                payPeriodStartDay: 1,
+                timezone: "UTC",
+                workweekStartDay: 1,
+                notes: null,
+                rulesetIds: [],
+            });
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.queryByRole("heading", { name: /new organization/i }),
+            ).not.toBeInTheDocument();
+        });
+
+        expect(onManageOrganization).not.toHaveBeenCalled();
+    });
+
+    it("creates a shared ruleset in the add-organization modal and associates it on save", async () => {
+        const user = userEvent.setup();
+
+        render(<EntryForm />);
+
+        const organizationInput = screen.getByLabelText(
+            /organization/i,
+        ) as HTMLInputElement;
+        await user.clear(organizationInput);
+        await user.type(organizationInput, "Ruleset Org");
+
+        await user.click(
+            screen.getByRole("button", { name: /add organization/i }),
+        );
+
+        await user.click(
             screen.getByRole("button", {
-                name: /manage organizations/i,
+                name: /\+ new shared ruleset/i,
             }),
         );
 
-        expect(onManageOrganization).toHaveBeenCalledTimes(1);
+        await user.click(
+            screen.getByRole("button", { name: /\+ new ruleset/i }),
+        );
+        await user.clear(screen.getByLabelText(/ruleset effective date/i));
+        await user.type(
+            screen.getByLabelText(/ruleset effective date/i),
+            "2026-08-01",
+        );
+        await user.click(
+            screen.getByRole("button", { name: /^\+ Meal Penalty$/i }),
+        );
+        await user.clear(screen.getByLabelText(/meal penalty amount/i));
+        await user.type(screen.getByLabelText(/meal penalty amount/i), "35");
+        await user.click(screen.getByRole("button", { name: /save ruleset/i }));
+
+        await waitFor(() => {
+            expect(mockCreateRuleset).toHaveBeenCalledTimes(1);
+        });
+
+        await user.clear(screen.getByLabelText(/organization name/i));
+        await user.type(
+            screen.getByLabelText(/organization name/i),
+            "Ruleset Org",
+        );
+
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: /effective 2026-08-01/i,
+            }),
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        await waitFor(() => {
+            expect(mockCreateOrganization).toHaveBeenCalledWith({
+                name: "Ruleset Org",
+                payPeriodStartDay: 1,
+                timezone: "UTC",
+                workweekStartDay: 1,
+                notes: null,
+                rulesetIds: ["ruleset-shared-created"],
+            });
+        });
+    });
+
+    it("shows one save error in the add-organization modal when organization create fails", async () => {
+        const user = userEvent.setup();
+        mockStoreError.value = "Create org failed";
+        mockCreateOrganization.mockResolvedValue({
+            success: false,
+            error: {
+                type: "validation",
+                field: "name",
+                message: "Create org failed",
+            },
+        });
+
+        render(<EntryForm />);
+
+        const organizationInput = screen.getByLabelText(/organization/i);
+        await user.clear(organizationInput);
+        await user.type(organizationInput, "Broken Org");
+        await user.click(
+            screen.getByRole("button", { name: /add organization/i }),
+        );
+        await user.click(
+            screen.getByRole("button", { name: /save organization/i }),
+        );
+
+        await waitFor(() => {
+            expect(mockCreateOrganization).toHaveBeenCalledTimes(1);
+        });
+
+        const modalErrors = screen.getAllByText("Create org failed");
+        expect(modalErrors).toHaveLength(1);
+        expect(
+            screen.getByRole("heading", { name: /new organization/i }),
+        ).toBeInTheDocument();
     });
 });

@@ -5,11 +5,13 @@
 
 import type {
     Entry,
+    CreateOrganizationInput,
     Organization,
     TagHistory,
     PositionHistory,
     VenueHistory,
     Ruleset,
+    CreateRulesetInput,
     Id,
     Result,
     DalError,
@@ -59,9 +61,7 @@ export interface IOrganizationRepository {
     /**
      * Create a new organization
      */
-    create(
-        org: Omit<Organization, "organizationId" | "createdAt">,
-    ): Promise<Result<Organization>>;
+    create(org: CreateOrganizationInput): Promise<Result<Organization>>;
 
     /**
      * Get organization by ID
@@ -167,9 +167,7 @@ export interface IRulesetRepository {
      * Create a new ruleset (effective-dated, immutable once created)
      * Validates single OT rule constraint: no mix of daily and weekly OT in same ruleset
      */
-    create(
-        ruleset: Omit<Ruleset, "rulesetId" | "createdAt">,
-    ): Promise<Result<Ruleset>>;
+    create(ruleset: CreateRulesetInput): Promise<Result<Ruleset>>;
 
     /**
      * Get ruleset by ID
@@ -189,6 +187,12 @@ export interface IRulesetRepository {
      * List all rulesets for an organization (in effective date order, newest first)
      */
     listByOrg(organizationId: Id): Promise<Result<Ruleset[]>>;
+
+    /**
+     * List all shared rulesets (in effective date order, newest first)
+     * Used by selection/assignment UIs before organization association updates.
+     */
+    listAll(): Promise<Result<Ruleset[]>>;
 
     /**
      * Delete a ruleset (removes from history, use with caution)

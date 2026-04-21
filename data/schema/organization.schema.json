@@ -12,6 +12,7 @@
         "notes",
         "venues",
         "positions",
+        "rulesetIds",
         "createdAt"
     ],
     "properties": {
@@ -94,6 +95,15 @@
                     }
                 },
                 "additionalProperties": false
+            },
+            "default": []
+        },
+        "rulesetIds": {
+            "type": "array",
+            "description": "Top-level rulesets associated with this organization",
+            "items": {
+                "type": "string",
+                "pattern": "^ruleset-[a-z0-9]+$"
             },
             "default": []
         },

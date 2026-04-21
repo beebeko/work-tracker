@@ -106,7 +106,7 @@ export const useEntryForm = (editingEntryId?: Id | null) => {
             notes: null,
             mealPenaltyCount: 0,
         };
-    }, [editingEntry, store.organizations]);
+    }, [editingEntry]);
 
     const calculateHours = useCallback(
         (startTime: string, endTime: string): number => {

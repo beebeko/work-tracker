@@ -80,6 +80,12 @@ vi.mock("./OrganizationsPanel", () => ({
     ),
 }));
 
+vi.mock("./SharedRulesetsPanel", () => ({
+    SharedRulesetsPanel: () => (
+        <div data-testid="shared-rulesets-panel">SharedRulesetsPanel</div>
+    ),
+}));
+
 describe("FreelanceTrackerApp", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -111,6 +117,9 @@ describe("FreelanceTrackerApp", () => {
         ).toBeInTheDocument();
         expect(
             container.querySelector("#freelance-tab-organization"),
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector("#freelance-tab-shared-rulesets"),
         ).toBeInTheDocument();
     });
 
@@ -161,6 +170,34 @@ describe("FreelanceTrackerApp", () => {
             "data-mobile-active",
             "true",
         );
+    });
+
+    it("activates dedicated shared rulesets pane from the top tab", async () => {
+        const user = userEvent.setup();
+        const { container } = render(<FreelanceTrackerApp />);
+
+        const sharedRulesetsTopTab = container.querySelector(
+            "#freelance-tab-shared-rulesets",
+        );
+
+        if (!sharedRulesetsTopTab) {
+            throw new Error("Shared rulesets top tab was not rendered");
+        }
+
+        await user.click(sharedRulesetsTopTab);
+
+        const sharedRulesetsContent = container.querySelector(
+            "#freelance-panel-shared-rulesets",
+        );
+
+        expect(sharedRulesetsTopTab).toHaveClass(
+            "freelance-tracker-app__tab--active",
+        );
+        expect(sharedRulesetsContent).toHaveAttribute(
+            "data-mobile-active",
+            "true",
+        );
+        expect(screen.getByTestId("shared-rulesets-panel")).toBeInTheDocument();
     });
 
     it("renders organization-management navigation controls", () => {

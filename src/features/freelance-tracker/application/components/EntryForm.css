@@ -232,8 +232,7 @@
     position: relative;
 }
 
-.entry-form__autocomplete-wrapper--combo
-    input:not([type="radio"]) {
+.entry-form__autocomplete-wrapper--combo input:not([type="radio"]) {
     padding-right: 38px;
 }
 
@@ -413,6 +412,8 @@
 
 .entry-form__modal {
     width: min(420px, 100%);
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
     background: #1f1f1f;
     border: 1px solid #3a3a3a;
     padding: 16px;

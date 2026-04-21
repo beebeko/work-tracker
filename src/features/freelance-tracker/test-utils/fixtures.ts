@@ -25,6 +25,7 @@ export function makeOrganization(
         notes: null,
         venues: [],
         positions: [],
+        rulesetIds: [],
         createdAt: "2026-04-14T10:00:00.000Z",
         ...overrides,
     };
@@ -57,7 +58,6 @@ export function makeRuleset(
 ): Ruleset {
     return {
         rulesetId: testId("ruleset"),
-        organizationId: testId("org"),
         effectiveDate: "2026-04-01",
         rules: [],
         createdAt: "2026-04-01T00:00:00.000Z",

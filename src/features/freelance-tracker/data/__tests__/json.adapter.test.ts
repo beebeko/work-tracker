@@ -201,6 +201,7 @@ describe("JsonDataLayer repositories", () => {
         expect(created.data.notes).toBeNull();
         expect(created.data.venues).toEqual([]);
         expect(created.data.positions).toEqual([]);
+        expect(created.data.rulesetIds).toEqual([]);
     });
 
     it("updates organization catalogs by replacing positions and venues arrays", async () => {
@@ -264,7 +265,176 @@ describe("JsonDataLayer repositories", () => {
             notes: null,
             venues: [],
             positions: [],
+            rulesetIds: [],
         });
+    });
+
+    it("associates a newly created ruleset to the provided organization without persisting org ownership on the ruleset", async () => {
+        const dal = new JsonDataLayer();
+        const organization = await dal.organizations.create({
+            name: "Ruleset Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!organization.success)
+            throw new Error("organization create failed");
+
+        const createdRuleset = await dal.rulesets.create({
+            organizationId: organization.data.organizationId,
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+
+        expect(createdRuleset.success).toBe(true);
+        if (!createdRuleset.success) return;
+        expect(createdRuleset.data.organizationId).toBeUndefined();
+
+        const refreshedOrganization = await dal.organizations.get(
+            organization.data.organizationId,
+        );
+        expect(refreshedOrganization.success).toBe(true);
+        if (!refreshedOrganization.success) return;
+        expect(refreshedOrganization.data.rulesetIds).toEqual([
+            createdRuleset.data.rulesetId,
+        ]);
+
+        const listedRulesets = await dal.rulesets.listByOrg(
+            organization.data.organizationId,
+        );
+        expect(listedRulesets.success).toBe(true);
+        if (!listedRulesets.success) return;
+        expect(listedRulesets.data.map((ruleset) => ruleset.rulesetId)).toEqual(
+            [createdRuleset.data.rulesetId],
+        );
+    });
+
+    it("rehydrates legacy ruleset ownership into organization rulesetIds", async () => {
+        const storage = attachLocalStorage();
+        storage.setItem(
+            "freelance-tracker:organizations",
+            JSON.stringify([
+                {
+                    organizationId: "org-legacy001",
+                    name: "Legacy Org",
+                    payPeriodStartDay: 1,
+                    timezone: "UTC",
+                    workweekStartDay: 1,
+                    createdAt: "2026-04-01T00:00:00.000Z",
+                    venues: [],
+                    positions: [],
+                },
+            ]),
+        );
+        storage.setItem(
+            "freelance-tracker:rulesets",
+            JSON.stringify([
+                {
+                    rulesetId: "ruleset-legacy001",
+                    organizationId: "org-legacy001",
+                    effectiveDate: "2026-04-01",
+                    rules: [],
+                    createdAt: "2026-04-01T00:00:00.000Z",
+                },
+            ]),
+        );
+
+        const dal = new JsonDataLayer();
+
+        const organization = await dal.organizations.get(
+            "org-legacy001" as any,
+        );
+        expect(organization.success).toBe(true);
+        if (!organization.success) return;
+        expect(organization.data.rulesetIds).toEqual(["ruleset-legacy001"]);
+
+        const rulesets = await dal.rulesets.listByOrg("org-legacy001" as any);
+        expect(rulesets.success).toBe(true);
+        if (!rulesets.success) return;
+        expect(rulesets.data[0]?.organizationId).toBeUndefined();
+    });
+
+    it("removes organization references when deleting a shared ruleset", async () => {
+        const dal = new JsonDataLayer();
+        const organization = await dal.organizations.create({
+            name: "Delete Ruleset Org",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!organization.success)
+            throw new Error("organization create failed");
+
+        const createdRuleset = await dal.rulesets.create({
+            organizationId: organization.data.organizationId,
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+        if (!createdRuleset.success) throw new Error("ruleset create failed");
+
+        const deleted = await dal.rulesets.delete(
+            createdRuleset.data.rulesetId,
+        );
+        expect(deleted.success).toBe(true);
+
+        const refreshedOrganization = await dal.organizations.get(
+            organization.data.organizationId,
+        );
+        expect(refreshedOrganization.success).toBe(true);
+        if (!refreshedOrganization.success) return;
+        expect(refreshedOrganization.data.rulesetIds).toEqual([]);
+    });
+
+    it("lists all shared rulesets in effective-date order for assignment selection", async () => {
+        const dal = new JsonDataLayer();
+        const orgA = await dal.organizations.create({
+            name: "Ruleset List Org A",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        const orgB = await dal.organizations.create({
+            name: "Ruleset List Org B",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+        });
+        if (!orgA.success || !orgB.success) {
+            throw new Error("organization create failed");
+        }
+
+        const sharedLatest = await dal.rulesets.create({
+            organizationId: orgA.data.organizationId,
+            effectiveDate: "2026-06-01",
+            rules: [],
+        });
+        const sharedMiddle = await dal.rulesets.create({
+            organizationId: orgB.data.organizationId,
+            effectiveDate: "2026-05-01",
+            rules: [],
+        });
+        const unassociatedOldest = await dal.rulesets.create({
+            effectiveDate: "2026-04-01",
+            rules: [],
+        });
+
+        if (
+            !sharedLatest.success ||
+            !sharedMiddle.success ||
+            !unassociatedOldest.success
+        ) {
+            throw new Error("ruleset create failed");
+        }
+
+        const listed = await dal.rulesets.listAll();
+        expect(listed.success).toBe(true);
+        if (!listed.success) return;
+
+        expect(listed.data.map((ruleset) => ruleset.rulesetId)).toEqual([
+            sharedLatest.data.rulesetId,
+            sharedMiddle.data.rulesetId,
+            unassociatedOldest.data.rulesetId,
+        ]);
     });
 
     it("refreshes organization and entry reads after localStorage is reseeded", async () => {

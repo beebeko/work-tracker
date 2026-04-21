@@ -9,6 +9,7 @@ import type { Id } from "@/features/freelance-tracker/contracts/types";
 import { EntryFormAutocompleteList } from "./EntryFormAutocompleteList";
 import { EntryFormPaySection } from "./EntryFormPaySection";
 import { EntryFormPositionModal } from "./EntryFormPositionModal";
+import { OrganizationForm, type OrganizationDraft } from "./OrganizationForm";
 import {
     EMPTY_AUTOCOMPLETE_STATE,
     createDefaultEntryValues,
@@ -65,6 +66,23 @@ export const EntryForm: React.FC<EntryFormProps> = ({
         name: "",
         defaultRate: "",
     });
+    const [isOrganizationModalOpen, setIsOrganizationModalOpen] =
+        useState(false);
+    const [organizationDraft, setOrganizationDraft] =
+        useState<OrganizationDraft>({
+            name: "",
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+            notes: "",
+            venues: [],
+            positions: [],
+            rulesetIds: [],
+        });
+    const [organizationModalError, setOrganizationModalError] = useState<
+        string | null
+    >(null);
+    const [isSavingOrganization, setIsSavingOrganization] = useState(false);
     const [isSingleColumnComboboxLayout, setIsSingleColumnComboboxLayout] =
         useState(false);
 
@@ -141,6 +159,9 @@ export const EntryForm: React.FC<EntryFormProps> = ({
         setIsPositionModalOpen(false);
         setPositionModalError(null);
         setPositionDraft({ name: "", defaultRate: "" });
+        setIsOrganizationModalOpen(false);
+        setOrganizationModalError(null);
+        setIsSavingOrganization(false);
     }, [editingEntryId, form.editingEntry, form.initialValues.organizationId]);
 
     const organizationMatch = findOrganizationByName(
@@ -287,6 +308,32 @@ export const EntryForm: React.FC<EntryFormProps> = ({
         });
         setPositionModalError(null);
         setIsPositionModalOpen(true);
+    };
+
+    const openNewOrganizationModal = () => {
+        const prefilledName = normalizeCatalogName(values.organizationName);
+        setOrganizationDraft({
+            name: prefilledName,
+            payPeriodStartDay: 1,
+            timezone: "UTC",
+            workweekStartDay: 1,
+            notes: "",
+            venues: [],
+            positions: [],
+            rulesetIds: [],
+        });
+        setOrganizationModalError(null);
+        void store.loadSharedRulesets();
+        setIsOrganizationModalOpen(true);
+    };
+
+    const closeNewOrganizationModal = () => {
+        if (isSavingOrganization) {
+            return;
+        }
+
+        setIsOrganizationModalOpen(false);
+        setOrganizationModalError(null);
     };
 
     const closeCreatePositionModal = () => {
@@ -606,6 +653,60 @@ export const EntryForm: React.FC<EntryFormProps> = ({
         }
     };
 
+    const handleChangeOrganizationDraft = <K extends keyof OrganizationDraft>(
+        field: K,
+        value: OrganizationDraft[K],
+    ) => {
+        setOrganizationDraft((current) => ({ ...current, [field]: value }));
+        setOrganizationModalError(null);
+    };
+
+    const handleSaveOrganization = async () => {
+        if (isSavingOrganization) {
+            return;
+        }
+
+        const normalizedName = normalizeCatalogName(organizationDraft.name);
+        if (!normalizedName) {
+            setOrganizationModalError("Organization name is required");
+            return;
+        }
+
+        setIsSavingOrganization(true);
+        setOrganizationModalError(null);
+
+        try {
+            const result = await store.createOrganization({
+                name: normalizedName,
+                payPeriodStartDay: organizationDraft.payPeriodStartDay,
+                timezone: organizationDraft.timezone,
+                workweekStartDay: organizationDraft.workweekStartDay,
+                notes: organizationDraft.notes.trim()
+                    ? organizationDraft.notes
+                    : null,
+                rulesetIds: organizationDraft.rulesetIds,
+            });
+
+            if (!result.success) {
+                setOrganizationModalError(
+                    getErrorMsg(result.error, "Failed to create organization"),
+                );
+                return;
+            }
+
+            setValues((prev) => ({
+                ...prev,
+                organizationName: result.data.name,
+                organizationId: result.data.organizationId,
+            }));
+            setValidationError(null);
+            setIsOrganizationModalOpen(false);
+            setOrganizationModalError(null);
+        } finally {
+            setIsSavingOrganization(false);
+        }
+    };
+
     const handleCancelEdit = () => {
         setValidationError(null);
         onCancelEdit?.();
@@ -713,9 +814,9 @@ export const EntryForm: React.FC<EntryFormProps> = ({
                                     <button
                                         type="button"
                                         className="entry-form__create-prompt-button"
-                                        onClick={onManageOrganization}
+                                        onClick={openNewOrganizationModal}
                                     >
-                                        Manage Organizations
+                                        Add Organization
                                     </button>
                                 </div>
                             )}
@@ -944,9 +1045,11 @@ export const EntryForm: React.FC<EntryFormProps> = ({
                     <div className="entry-form__error">{validationError}</div>
                 )}
 
-                {store.error && (
-                    <div className="entry-form__error">{store.error}</div>
-                )}
+                {store.error &&
+                    !isOrganizationModalOpen &&
+                    !isPositionModalOpen && (
+                        <div className="entry-form__error">{store.error}</div>
+                    )}
 
                 <div className="entry-form__actions">
                     {editingEntryId && (
@@ -983,6 +1086,20 @@ export const EntryForm: React.FC<EntryFormProps> = ({
                     onChangeDraft={setPositionDraft}
                     onCancel={closeCreatePositionModal}
                     onSave={() => void handleSavePosition()}
+                />
+            )}
+
+            {isOrganizationModalOpen && (
+                <OrganizationForm
+                    mode="add"
+                    draft={organizationDraft}
+                    error={organizationModalError}
+                    isSaving={isSavingOrganization}
+                    sharedRulesets={store.sharedRulesets}
+                    canCreateSharedRulesets
+                    onChangeDraft={handleChangeOrganizationDraft}
+                    onCancel={closeNewOrganizationModal}
+                    onSave={() => void handleSaveOrganization()}
                 />
             )}
         </>

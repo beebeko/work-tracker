@@ -19,7 +19,9 @@ import type {
     TagHistory,
     PositionHistory,
     VenueHistory,
+    CreateOrganizationInput,
     Ruleset,
+    CreateRulesetInput,
     Id,
     Result,
     DalError,
@@ -189,7 +191,92 @@ function normalizeStoredOrganization(organization: Organization): Organization {
             typeof organization.notes === "string" ? organization.notes : null,
         venues: organization.venues ?? [],
         positions: organization.positions ?? [],
+        rulesetIds: Array.isArray(organization.rulesetIds)
+            ? Array.from(new Set(organization.rulesetIds))
+            : [],
     };
+}
+
+function normalizeStoredRuleset(
+    ruleset: Ruleset & { organizationId?: Id },
+): Ruleset {
+    const { organizationId: _legacyOrganizationId, ...normalized } = ruleset;
+    return normalized;
+}
+
+function resolveRulesetAssociations(
+    organizations: Organization[],
+    rulesets: Array<Ruleset & { organizationId?: Id }>,
+): { organizations: Organization[]; rulesets: Ruleset[] } {
+    const rulesetIdsByOrg = new Map<Id, Id[]>();
+    const normalizedRulesets = rulesets.map((ruleset) => {
+        if (ruleset.organizationId) {
+            const existing = rulesetIdsByOrg.get(ruleset.organizationId) ?? [];
+            existing.push(ruleset.rulesetId);
+            rulesetIdsByOrg.set(ruleset.organizationId, existing);
+        }
+
+        return normalizeStoredRuleset(ruleset);
+    });
+
+    const normalizedRuleIds = new Set(
+        normalizedRulesets.map((ruleset) => ruleset.rulesetId),
+    );
+    const normalizedOrganizations = organizations.map((organization) => {
+        const current = Array.isArray(organization.rulesetIds)
+            ? organization.rulesetIds.filter((rulesetId) =>
+                  normalizedRuleIds.has(rulesetId),
+              )
+            : [];
+        const derived = rulesetIdsByOrg.get(organization.organizationId) ?? [];
+
+        return normalizeStoredOrganization({
+            ...organization,
+            rulesetIds: Array.from(new Set([...current, ...derived])),
+        });
+    });
+
+    return {
+        organizations: normalizedOrganizations,
+        rulesets: normalizedRulesets,
+    };
+}
+
+function findMissingRulesetReference(
+    store: MemoryStore,
+    rulesetIds: Id[],
+): Id | null {
+    const knownRulesetIds = new Set(
+        store.rulesets.map((ruleset) => ruleset.rulesetId),
+    );
+
+    for (const rulesetId of rulesetIds) {
+        if (!knownRulesetIds.has(rulesetId)) {
+            return rulesetId;
+        }
+    }
+
+    return null;
+}
+
+function listRulesetsForOrganization(
+    store: MemoryStore,
+    organizationId: Id,
+): Ruleset[] {
+    const organization = store.organizations.find(
+        (candidate) => candidate.organizationId === organizationId,
+    );
+    if (!organization) {
+        return [];
+    }
+
+    const rulesetIds = new Set(
+        normalizeStoredOrganization(organization).rulesetIds,
+    );
+
+    return store.rulesets
+        .filter((ruleset) => rulesetIds.has(ruleset.rulesetId))
+        .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
 }
 
 /**
@@ -382,9 +469,7 @@ class OrganizationRepositoryImpl implements IOrganizationRepository {
         private onRead?: () => void,
     ) {}
 
-    async create(
-        org: Omit<Organization, "organizationId" | "createdAt">,
-    ): Promise<Result<Organization>> {
+    async create(org: CreateOrganizationInput): Promise<Result<Organization>> {
         const newOrg: Organization = {
             ...org,
             // Apply schema defaults for new organizations
@@ -393,9 +478,22 @@ class OrganizationRepositoryImpl implements IOrganizationRepository {
             notes: org.notes ?? null,
             venues: org.venues ?? [],
             positions: org.positions ?? [],
+            rulesetIds: Array.from(new Set(org.rulesetIds ?? [])),
             organizationId: genId("org"),
             createdAt: new Date().toISOString(),
         };
+
+        const missingRulesetId = findMissingRulesetReference(
+            this.store,
+            newOrg.rulesetIds,
+        );
+        if (missingRulesetId) {
+            return err({
+                type: "notFound",
+                entityType: "Ruleset",
+                id: missingRulesetId,
+            });
+        }
 
         if (!validateOrganization(newOrg)) {
             return err({
@@ -449,9 +547,28 @@ class OrganizationRepositoryImpl implements IOrganizationRepository {
         const updated = {
             ...normalizeStoredOrganization(this.store.organizations[index]),
             ...update,
+            rulesetIds: Array.from(
+                new Set(
+                    update.rulesetIds ??
+                        this.store.organizations[index].rulesetIds ??
+                        [],
+                ),
+            ),
             organizationId, // prevent ID changes
             createdAt: this.store.organizations[index].createdAt, // prevent creation time changes
         };
+
+        const missingRulesetId = findMissingRulesetReference(
+            this.store,
+            updated.rulesetIds,
+        );
+        if (missingRulesetId) {
+            return err({
+                type: "notFound",
+                entityType: "Ruleset",
+                id: missingRulesetId,
+            });
+        }
 
         if (!validateOrganization(updated)) {
             return err({
@@ -676,9 +793,7 @@ class RulesetRepositoryImpl implements IRulesetRepository {
         private onMutation?: MutationCallback,
     ) {}
 
-    async create(
-        ruleset: Omit<Ruleset, "rulesetId" | "createdAt">,
-    ): Promise<Result<Ruleset>> {
+    async create(ruleset: CreateRulesetInput): Promise<Result<Ruleset>> {
         // Validate single OT rule constraint: no mix of daily-overtime and weekly-overtime
         const otRules = ruleset.rules.filter(
             (r) => r.type === "daily-overtime" || r.type === "weekly-overtime",
@@ -696,11 +811,60 @@ class RulesetRepositoryImpl implements IRulesetRepository {
         }
 
         const now = new Date().toISOString();
+        const { organizationId, ...rulesetBody } = ruleset;
         const newRuleset: Ruleset = {
             rulesetId: genId("ruleset"),
-            ...ruleset,
+            ...rulesetBody,
             createdAt: now,
         };
+
+        if (organizationId) {
+            const organizationIndex = this.store.organizations.findIndex(
+                (organization) =>
+                    organization.organizationId === organizationId,
+            );
+            if (organizationIndex === -1) {
+                return err({
+                    type: "notFound",
+                    entityType: "Organization",
+                    id: organizationId,
+                });
+            }
+
+            const updatedOrganization = normalizeStoredOrganization({
+                ...this.store.organizations[organizationIndex],
+                rulesetIds: Array.from(
+                    new Set([
+                        ...normalizeStoredOrganization(
+                            this.store.organizations[organizationIndex],
+                        ).rulesetIds,
+                        newRuleset.rulesetId,
+                    ]),
+                ),
+            });
+
+            if (!validateOrganization(updatedOrganization)) {
+                return err({
+                    type: "validation",
+                    message:
+                        "Organization validation failed after associating ruleset",
+                    field: "organization.rulesetIds",
+                });
+            }
+
+            if (!validateRuleset(newRuleset)) {
+                return err({
+                    type: "validation",
+                    message: "Ruleset validation failed",
+                    field: "ruleset",
+                });
+            }
+
+            this.store.rulesets.push(newRuleset);
+            this.store.organizations[organizationIndex] = updatedOrganization;
+            this.onMutation?.();
+            return ok(newRuleset);
+        }
 
         if (!validateRuleset(newRuleset)) {
             return err({
@@ -733,23 +897,24 @@ class RulesetRepositoryImpl implements IRulesetRepository {
         organizationId: Id;
         onDate: string;
     }): Promise<Result<Ruleset | null>> {
-        // Find all rulesets for this org with effectiveDate <= onDate, sorted by effectiveDate descending
-        const candidates = this.store.rulesets
-            .filter(
-                (r) =>
-                    r.organizationId === params.organizationId &&
-                    r.effectiveDate <= params.onDate,
-            )
-            .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
+        const candidates = listRulesetsForOrganization(
+            this.store,
+            params.organizationId,
+        ).filter((ruleset) => ruleset.effectiveDate <= params.onDate);
 
         return ok(candidates[0] || null);
     }
 
     async listByOrg(organizationId: Id): Promise<Result<Ruleset[]>> {
-        const rulesets = this.store.rulesets
-            .filter((r) => r.organizationId === organizationId)
-            .sort((a, b) => b.effectiveDate.localeCompare(a.effectiveDate));
-        return ok([...rulesets]);
+        return ok([...listRulesetsForOrganization(this.store, organizationId)]);
+    }
+
+    async listAll(): Promise<Result<Ruleset[]>> {
+        return ok(
+            [...this.store.rulesets].sort((a, b) =>
+                b.effectiveDate.localeCompare(a.effectiveDate),
+            ),
+        );
     }
 
     async delete(rulesetId: Id): Promise<Result<void>> {
@@ -764,6 +929,15 @@ class RulesetRepositoryImpl implements IRulesetRepository {
             });
         }
         this.store.rulesets.splice(index, 1);
+        this.store.organizations = this.store.organizations.map(
+            (organization) =>
+                normalizeStoredOrganization({
+                    ...organization,
+                    rulesetIds: normalizeStoredOrganization(
+                        organization,
+                    ).rulesetIds.filter((candidate) => candidate !== rulesetId),
+                }),
+        );
         this.onMutation?.();
         return ok(undefined);
     }
@@ -910,6 +1084,7 @@ export class JsonDataLayer implements IDataLayer {
         const positionsJson = storage.getItem(POSITIONS_KEY);
         const venuesJson = storage.getItem(VENUES_KEY);
         const rulesetsJson = storage.getItem(RULESETS_KEY);
+        let rawRulesets: Array<Ruleset & { organizationId?: Id }> = [];
 
         if (entriesJson) {
             this.store.entries =
@@ -930,8 +1105,15 @@ export class JsonDataLayer implements IDataLayer {
             this.store.venues = JSON.parse(venuesJson);
         }
         if (rulesetsJson) {
-            this.store.rulesets = JSON.parse(rulesetsJson);
+            rawRulesets = JSON.parse(rulesetsJson);
         }
+
+        const resolvedAssociations = resolveRulesetAssociations(
+            this.store.organizations,
+            rawRulesets,
+        );
+        this.store.organizations = resolvedAssociations.organizations;
+        this.store.rulesets = resolvedAssociations.rulesets;
     }
 
     async initialize(): Promise<Result<void>> {

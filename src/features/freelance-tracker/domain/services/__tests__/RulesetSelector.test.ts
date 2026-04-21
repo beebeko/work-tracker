@@ -55,6 +55,13 @@ class MockRulesetRepository {
         return ok(rulesets);
     }
 
+    async listAll(): Promise<Result<Ruleset[]>> {
+        const rulesets = Array.from(this.rulesets.values()).sort((a, b) =>
+            b.effectiveDate.localeCompare(a.effectiveDate),
+        );
+        return ok(rulesets);
+    }
+
     async create(
         ruleset: Omit<Ruleset, "rulesetId" | "createdAt">,
     ): Promise<Result<Ruleset>> {

@@ -16,6 +16,7 @@ const createStore = () => ({
             notes: "# House Notes\n\nBring **gaff** tape.",
             venues: ["Main Stage"],
             positions: [{ name: "Sound Tech", defaultRate: 150 }],
+            rulesetIds: ["ruleset-1"],
             createdAt: "2025-01-01T00:00:00.000Z",
         },
     ],
@@ -37,8 +38,75 @@ const createStore = () => ({
             createdAt: "2025-01-01T00:00:00.000Z",
         },
     ],
+    sharedRulesets: [
+        {
+            rulesetId: "ruleset-1",
+            effectiveDate: "2025-01-01",
+            rules: [
+                {
+                    ruleId: "rule-1",
+                    type: "meal-penalty",
+                    description: "Meal rule",
+                    penaltyAmount: 25,
+                },
+            ],
+            createdAt: "2025-01-01T00:00:00.000Z",
+        },
+        {
+            rulesetId: "ruleset-2",
+            effectiveDate: "2025-02-01",
+            rules: [
+                {
+                    ruleId: "rule-2",
+                    type: "daily-overtime",
+                    description: "Daily OT",
+                    dailyThresholdHours: 8,
+                    multiplier: 1.5,
+                },
+            ],
+            createdAt: "2025-02-01T00:00:00.000Z",
+        },
+    ],
+    getSharedRulesetAssignmentSummary: vi.fn(() => [
+        {
+            ruleset: {
+                rulesetId: "ruleset-1",
+                effectiveDate: "2025-01-01",
+                rules: [
+                    {
+                        ruleId: "rule-1",
+                        type: "meal-penalty",
+                        description: "Meal rule",
+                        penaltyAmount: 25,
+                    },
+                ],
+                createdAt: "2025-01-01T00:00:00.000Z",
+            },
+            assignedOrganizationIds: ["org-1"],
+            assignedOrganizationNames: ["Alpha Org"],
+        },
+        {
+            ruleset: {
+                rulesetId: "ruleset-2",
+                effectiveDate: "2025-02-01",
+                rules: [
+                    {
+                        ruleId: "rule-2",
+                        type: "daily-overtime",
+                        description: "Daily OT",
+                        dailyThresholdHours: 8,
+                        multiplier: 1.5,
+                    },
+                ],
+                createdAt: "2025-02-01T00:00:00.000Z",
+            },
+            assignedOrganizationIds: [],
+            assignedOrganizationNames: [],
+        },
+    ]),
     loadHistories: vi.fn().mockResolvedValue(undefined),
     loadRulesets: vi.fn().mockResolvedValue(undefined),
+    loadSharedRulesets: vi.fn().mockResolvedValue(undefined),
     createRuleset: vi.fn().mockResolvedValue({
         success: true,
         data: {
@@ -63,6 +131,7 @@ const createStore = () => ({
             notes: "# House Notes\n\nBring **gaff** tape.",
             venues: ["Main Stage"],
             positions: [{ name: "Sound Tech", defaultRate: 150 }],
+            rulesetIds: ["ruleset-1"],
             createdAt: "2025-01-01T00:00:00.000Z",
         },
     }),
@@ -104,6 +173,7 @@ describe("OrganizationsPanel", () => {
 
         expect(mockStore.loadRulesets).toHaveBeenCalledWith("org-1");
         expect(mockStore.loadHistories).toHaveBeenCalledWith("org-1");
+        expect(mockStore.loadSharedRulesets).toHaveBeenCalledTimes(1);
         expect(
             screen.getByTestId("organization-details-dialog"),
         ).toBeInTheDocument();
@@ -215,6 +285,11 @@ describe("OrganizationsPanel", () => {
 
         await user.click(screen.getByRole("button", { name: "Alpha Org" }));
 
+        await user.clear(screen.getByLabelText(/organization name/i));
+        await user.type(
+            screen.getByLabelText(/organization name/i),
+            "Alpha Org Renamed",
+        );
         await user.clear(screen.getByLabelText(/timezone/i));
         await user.type(screen.getByLabelText(/timezone/i), "America/New_York");
         await user.selectOptions(
@@ -266,6 +341,7 @@ describe("OrganizationsPanel", () => {
 
         await waitFor(() => {
             expect(mockStore.updateOrganization).toHaveBeenCalledWith("org-1", {
+                name: "Alpha Org Renamed",
                 timezone: "America/New_York",
                 payPeriodStartDay: 3,
                 workweekStartDay: 5,
@@ -277,7 +353,14 @@ describe("OrganizationsPanel", () => {
                         defaultRate: 175,
                     },
                 ],
+                rulesetIds: ["ruleset-1"],
             });
+        });
+
+        await waitFor(() => {
+            expect(
+                screen.queryByTestId("organization-details-dialog"),
+            ).not.toBeInTheDocument();
         });
     });
 
@@ -366,6 +449,7 @@ describe("OrganizationsPanel", () => {
 
         await waitFor(() => {
             expect(mockStore.updateOrganization).toHaveBeenCalledWith("org-1", {
+                name: "Alpha Org",
                 timezone: "America/Chicago",
                 payPeriodStartDay: 1,
                 workweekStartDay: 1,
@@ -377,6 +461,35 @@ describe("OrganizationsPanel", () => {
                         defaultRate: 150,
                     },
                 ],
+                rulesetIds: ["ruleset-1"],
+            });
+        });
+    });
+
+    it("attaches shared rulesets from the global catalog to an organization", async () => {
+        const user = userEvent.setup();
+        render(<OrganizationsPanel />);
+
+        await user.click(screen.getByRole("button", { name: "Alpha Org" }));
+
+        await user.click(screen.getByLabelText(/effective 2025-02-01/i));
+        await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+        await waitFor(() => {
+            expect(mockStore.updateOrganization).toHaveBeenCalledWith("org-1", {
+                name: "Alpha Org",
+                timezone: "UTC",
+                payPeriodStartDay: 1,
+                workweekStartDay: 1,
+                notes: "# House Notes\n\nBring **gaff** tape.",
+                venues: ["Main Stage"],
+                positions: [
+                    {
+                        name: "Sound Tech",
+                        defaultRate: 150,
+                    },
+                ],
+                rulesetIds: ["ruleset-1", "ruleset-2"],
             });
         });
     });

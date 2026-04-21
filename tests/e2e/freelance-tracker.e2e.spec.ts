@@ -1,6 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-type TrackerView = "Entry" | "Organization" | "Entry History" | "Pay Summary";
+type TrackerView =
+    | "Entry"
+    | "Organization"
+    | "Rulesets"
+    | "Entry History"
+    | "Pay Summary";
 type E2EStartupOverrides = {
     forceFirebaseMode: boolean;
     bootstrapOutcomes: Array<"success" | "error">;
@@ -15,6 +20,7 @@ type E2EWindow = Window & {
 const panelSelectorByView: Record<TrackerView, string> = {
     Entry: "#freelance-panel-entry",
     Organization: "#freelance-panel-organization",
+    Rulesets: "#freelance-panel-shared-rulesets",
     "Entry History": "#freelance-panel-history",
     "Pay Summary": "#freelance-panel-summary",
 };
@@ -22,6 +28,7 @@ const panelSelectorByView: Record<TrackerView, string> = {
 const tabLabelByView: Record<TrackerView, string> = {
     Entry: "Entry",
     Organization: "Organization",
+    Rulesets: "Rulesets",
     "Entry History": "Entry History",
     "Pay Summary": "Pay Summary",
 };
@@ -29,6 +36,7 @@ const tabLabelByView: Record<TrackerView, string> = {
 const tabSelectorByView: Record<TrackerView, string> = {
     Entry: "#freelance-tab-entry",
     Organization: "#freelance-tab-organization",
+    Rulesets: "#freelance-tab-shared-rulesets",
     "Entry History": "#freelance-tab-history",
     "Pay Summary": "#freelance-tab-summary",
 };
@@ -183,7 +191,11 @@ async function ensureView(page: Page, isMobile: boolean, view: TrackerView) {
         await expect(tab).toBeVisible();
         await tab.click();
         await expect(tab).toHaveClass(/freelance-tracker-app__tab--active/);
-    } else if (view === "Entry" || view === "Organization") {
+    } else if (
+        view === "Entry" ||
+        view === "Organization" ||
+        view === "Rulesets"
+    ) {
         const leftTab = page
             .locator(".freelance-tracker-app__left-tabs")
             .getByRole("button", {
@@ -322,7 +334,7 @@ async function ensureOrganizationSelected(page: Page, name: string) {
     await orgInput.fill(name);
     await orgInput.blur();
     await expect(
-        entryPanel.getByRole("button", { name: /manage organizations/i }),
+        entryPanel.getByRole("button", { name: /add organization/i }),
     ).toHaveCount(0);
     await expect(orgInput).toHaveValue(name);
 }
@@ -1065,9 +1077,8 @@ test("history and summary organization filters stay isolated through one UI jour
     );
 });
 
-test("unknown organization shows Manage Organizations prompt and opens organization pane", async ({
+test("unknown organization can create and attach a shared ruleset during organization creation", async ({
     page,
-    isMobile,
 }) => {
     const entryPanel = panelForView(page, "Entry");
     const orgInput = entryPanel.getByPlaceholder(
@@ -1079,17 +1090,139 @@ test("unknown organization shows Manage Organizations prompt and opens organizat
         entryPanel.getByText('No organization named "Org Fresh".'),
     ).toBeVisible();
 
-    await entryPanel
-        .getByRole("button", { name: /manage organizations/i })
+    await entryPanel.getByRole("button", { name: /add organization/i }).click();
+
+    await expect(
+        page.getByRole("heading", { name: /new organization/i }),
+    ).toBeVisible();
+
+    const organizationDialog = page.getByRole("dialog", {
+        name: /new organization/i,
+    });
+
+    await organizationDialog
+        .getByRole("button", { name: /\+ new shared ruleset/i })
+        .click();
+    await organizationDialog
+        .getByRole("button", { name: /\+ new ruleset/i })
+        .click();
+    await organizationDialog
+        .getByLabel(/ruleset effective date/i)
+        .fill("2026-09-01");
+    await organizationDialog
+        .getByRole("button", { name: /^\+ Meal Penalty$/i })
+        .click();
+    await organizationDialog.getByLabel(/meal penalty amount/i).fill("40");
+    await organizationDialog
+        .getByRole("button", { name: /save ruleset/i })
         .click();
 
-    const organizationsPanel = await ensureView(page, isMobile, "Organization");
-    await expect(
-        organizationsPanel.getByRole("heading", { name: /organizations/i }),
-    ).toBeVisible();
+    await organizationDialog
+        .getByRole("checkbox", { name: /effective 2026-09-01/i })
+        .check();
+    const saveOrganizationButton = organizationDialog.getByRole("button", {
+        name: /save organization/i,
+    });
+    await saveOrganizationButton.scrollIntoViewIfNeeded();
+    await saveOrganizationButton.click();
+
+    await expect(organizationDialog).toHaveCount(0);
+    await expect(orgInput).toHaveValue("Org Fresh");
+
+    const persisted = await page.evaluate(() => {
+        const organizationsRaw = window.localStorage.getItem(
+            "freelance-tracker:organizations",
+        );
+        const rulesetsRaw = window.localStorage.getItem(
+            "freelance-tracker:rulesets",
+        );
+
+        const organizations = organizationsRaw
+            ? (JSON.parse(organizationsRaw) as Array<{
+                  name: string;
+                  rulesetIds?: string[];
+              }>)
+            : [];
+        const rulesets = rulesetsRaw
+            ? (JSON.parse(rulesetsRaw) as Array<{
+                  rulesetId: string;
+                  effectiveDate: string;
+              }>)
+            : [];
+
+        const createdOrg = organizations.find(
+            (org) => org.name === "Org Fresh",
+        );
+        const createdRuleset = rulesets.find(
+            (ruleset) => ruleset.effectiveDate === "2026-09-01",
+        );
+
+        return {
+            createdOrgRulesetIds: createdOrg?.rulesetIds ?? [],
+            createdRulesetId: createdRuleset?.rulesetId ?? null,
+        };
+    });
+
+    expect(persisted.createdRulesetId).toBeTruthy();
+    expect(persisted.createdOrgRulesetIds).toContain(
+        persisted.createdRulesetId,
+    );
 });
 
-test("duplicate organization name does not trigger manage-organizations prompt", async ({
+test("global shared-rulesets surface supports create and delete of an unassigned ruleset", async ({
+    page,
+    isMobile,
+}) => {
+    const sharedRulesetsPanel = await ensureView(page, isMobile, "Rulesets");
+
+    await expect(
+        sharedRulesetsPanel.getByRole("heading", {
+            name: /shared rulesets/i,
+        }),
+    ).toBeVisible();
+
+    await sharedRulesetsPanel
+        .getByRole("button", { name: /\+ new ruleset/i })
+        .click();
+    await sharedRulesetsPanel
+        .getByLabel(/ruleset effective date/i)
+        .fill("2026-08-01");
+    await sharedRulesetsPanel
+        .getByRole("button", { name: /^\+ Meal Penalty$/i })
+        .click();
+    await sharedRulesetsPanel.getByLabel(/meal penalty amount/i).fill("30");
+    await sharedRulesetsPanel
+        .getByRole("button", { name: /save ruleset/i })
+        .click();
+
+    await expect(sharedRulesetsPanel.getByText("Total: 1")).toBeVisible();
+    await expect(sharedRulesetsPanel.getByText("Assigned: 0")).toBeVisible();
+    await expect(sharedRulesetsPanel.getByText("Unassigned: 1")).toBeVisible();
+
+    const unassignedCard = sharedRulesetsPanel
+        .locator(
+            '[data-testid="ruleset-card"][data-effective-date="2026-08-01"]',
+        )
+        .first();
+    await expect(unassignedCard).toContainText("Unassigned");
+
+    await unassignedCard.click();
+    await expect(
+        sharedRulesetsPanel.getByRole("heading", { name: /edit ruleset/i }),
+    ).toBeVisible();
+    await sharedRulesetsPanel
+        .getByRole("button", { name: /^delete$/i })
+        .click();
+
+    await expect(
+        sharedRulesetsPanel.locator(
+            '[data-testid="ruleset-card"][data-effective-date="2026-08-01"]',
+        ),
+    ).toHaveCount(0);
+    await expect(sharedRulesetsPanel.getByText("Total: 0")).toBeVisible();
+});
+
+test("duplicate organization name does not trigger add-organization prompt", async ({
     page,
 }) => {
     await ensureOrganizationSelected(page, E2E_ORG_NAME);
@@ -1100,7 +1233,7 @@ test("duplicate organization name does not trigger manage-organizations prompt",
     await orgInput.fill(`  ${E2E_ORG_NAME}  `);
     await expect(
         panelForView(page, "Entry").getByRole("button", {
-            name: /manage organizations/i,
+            name: /add organization/i,
         }),
     ).toHaveCount(0);
 });

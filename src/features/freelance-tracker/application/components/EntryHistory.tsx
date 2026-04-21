@@ -80,7 +80,16 @@ export const EntryHistory: React.FC<EntryHistoryProps> = ({ onEditEntry }) => {
                     }),
                 ),
             );
-            setAllEntries(results.filter(isOk).flatMap((r) => r.data));
+            // Guard against duplicate entry IDs when multiple DAL calls return
+            // overlapping rows; React row keys must remain unique.
+            const combinedEntries = results.filter(isOk).flatMap((r) => r.data);
+            const uniqueEntriesById = new Map<Id, Entry>();
+            combinedEntries.forEach((entry) => {
+                if (!uniqueEntriesById.has(entry.entryId)) {
+                    uniqueEntriesById.set(entry.entryId, entry);
+                }
+            });
+            setAllEntries(Array.from(uniqueEntriesById.values()));
         };
         void loadAll();
     }, [filterByOrg, store.organizations, store.selectedPeriod]);

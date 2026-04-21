@@ -10,13 +10,19 @@ import { EntryForm } from "./EntryForm";
 import { EntryHistory } from "./EntryHistory";
 import { PaySummary } from "./PaySummary";
 import { OrganizationsPanel } from "./OrganizationsPanel";
+import { SharedRulesetsPanel } from "./SharedRulesetsPanel";
 import { isFirebaseAdapterEnabled } from "@/features/freelance-tracker/data";
 import type { Id } from "@/features/freelance-tracker/contracts/types";
 import { getSyncStatusLabel, resolveSyncStatus } from "../startupStatus";
 import { resolveFirebaseModeForE2E } from "../e2eStartupOverrides";
 import "./FreelanceTrackerApp.css";
 
-type AppTab = "entry" | "organization" | "history" | "summary";
+type AppTab =
+    | "entry"
+    | "organization"
+    | "shared-rulesets"
+    | "history"
+    | "summary";
 
 type FreelanceTrackerAppProps = {
     firebaseMode?: boolean;
@@ -86,6 +92,12 @@ export const FreelanceTrackerApp: React.FC<FreelanceTrackerAppProps> = ({
         store.setEditingEntry(null);
         setEntryFormResetKey((prev) => prev + 1);
         setActiveTab("organization");
+    };
+
+    const handleSwitchToSharedRulesets = () => {
+        store.setEditingEntry(null);
+        setEntryFormResetKey((prev) => prev + 1);
+        setActiveTab("shared-rulesets");
     };
 
     const syncStatus = resolveSyncStatus({
@@ -161,6 +173,19 @@ export const FreelanceTrackerApp: React.FC<FreelanceTrackerAppProps> = ({
                     </button>
                     <button
                         type="button"
+                        id="freelance-tab-shared-rulesets"
+                        aria-controls="freelance-panel-left"
+                        className={`freelance-tracker-app__tab ${
+                            activeTab === "shared-rulesets"
+                                ? "freelance-tracker-app__tab--active"
+                                : ""
+                        }`}
+                        onClick={handleSwitchToSharedRulesets}
+                    >
+                        Rulesets
+                    </button>
+                    <button
+                        type="button"
                         id="freelance-tab-history"
                         aria-controls="freelance-panel-history"
                         className={`freelance-tracker-app__tab ${
@@ -193,7 +218,8 @@ export const FreelanceTrackerApp: React.FC<FreelanceTrackerAppProps> = ({
                         id="freelance-panel-left"
                         className={`freelance-tracker-app__panel freelance-tracker-app__panel--left ${
                             activeTab === "entry" ||
-                            activeTab === "organization"
+                            activeTab === "organization" ||
+                            activeTab === "shared-rulesets"
                                 ? "freelance-tracker-app__panel--active"
                                 : ""
                         }`}
@@ -223,6 +249,17 @@ export const FreelanceTrackerApp: React.FC<FreelanceTrackerAppProps> = ({
                                 onClick={handleSwitchToOrganization}
                             >
                                 Organization
+                            </button>
+                            <button
+                                type="button"
+                                className={`freelance-tracker-app__left-tab ${
+                                    activeTab === "shared-rulesets"
+                                        ? "freelance-tracker-app__left-tab--active"
+                                        : ""
+                                }`}
+                                onClick={handleSwitchToSharedRulesets}
+                            >
+                                Rulesets
                             </button>
                         </nav>
 
@@ -260,6 +297,25 @@ export const FreelanceTrackerApp: React.FC<FreelanceTrackerAppProps> = ({
                         >
                             <div className="freelance-tracker-app__panel-scroll">
                                 <OrganizationsPanel />
+                            </div>
+                        </div>
+
+                        <div
+                            id="freelance-panel-shared-rulesets"
+                            className="freelance-tracker-app__left-content"
+                            data-mobile-active={
+                                activeTab === "shared-rulesets"
+                                    ? "true"
+                                    : "false"
+                            }
+                            data-desktop-active={
+                                activeTab === "shared-rulesets"
+                                    ? "true"
+                                    : "false"
+                            }
+                        >
+                            <div className="freelance-tracker-app__panel-scroll">
+                                <SharedRulesetsPanel />
                             </div>
                         </div>
                     </section>

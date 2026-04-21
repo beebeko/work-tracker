@@ -3,23 +3,12 @@
     "title": "Ruleset Schema",
     "description": "Organization pay ruleset with effective dating and immutable history",
     "type": "object",
-    "required": [
-        "rulesetId",
-        "organizationId",
-        "effectiveDate",
-        "rules",
-        "createdAt"
-    ],
+    "required": ["rulesetId", "effectiveDate", "rules", "createdAt"],
     "properties": {
         "rulesetId": {
             "type": "string",
             "pattern": "^ruleset-[a-z0-9]+$",
             "description": "Unique identifier for the ruleset (branded Id)"
-        },
-        "organizationId": {
-            "type": "string",
-            "pattern": "^org-[a-z0-9]+$",
-            "description": "Organization this ruleset applies to"
         },
         "effectiveDate": {
             "type": "string",

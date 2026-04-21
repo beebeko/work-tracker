@@ -96,6 +96,9 @@ class MockDataLayer implements IDataLayer {
         async listByOrg() {
             return ok([]);
         },
+        async listAll() {
+            return ok([]);
+        },
         async delete() {
             return ok(undefined);
         },

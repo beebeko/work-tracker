@@ -31,13 +31,72 @@ const normalizeCatalogName = (value: string): string =>
 const normalizeCatalogKey = (value: string): string =>
     normalizeCatalogName(value).toLowerCase();
 
+const normalizeRulesetIds = (rulesetIds?: Id[]): Id[] =>
+    Array.from(new Set(rulesetIds ?? []));
+
+export type SharedRulesetAssignmentSummary = {
+    ruleset: Ruleset;
+    assignedOrganizationIds: Id[];
+    assignedOrganizationCount: number;
+    isAssigned: boolean;
+};
+
+export type SharedRulesetAssignmentFilter = {
+    includeAssigned?: boolean;
+    includeUnassigned?: boolean;
+};
+
+const mergeRulesetIds = (currentRulesetIds: Id[], nextRulesetIds: Id[]): Id[] =>
+    Array.from(new Set([...currentRulesetIds, ...nextRulesetIds]));
+
 const normalizeOrganizationCatalogs = (
     organization: Organization,
 ): Organization => ({
     ...organization,
     venues: organization.venues,
     positions: organization.positions,
+    rulesetIds: normalizeRulesetIds(organization.rulesetIds),
 });
+
+const rulesetIdsChanged = (
+    currentRulesetIds: Id[],
+    nextRulesetIds: Id[],
+): boolean =>
+    currentRulesetIds.length !== nextRulesetIds.length ||
+    currentRulesetIds.some(
+        (rulesetId, index) => rulesetId !== nextRulesetIds[index],
+    );
+
+const buildRulesetAssignmentIndex = (
+    organizations: Organization[],
+): Map<Id, Id[]> => {
+    const assignments = new Map<Id, Id[]>();
+
+    for (const organization of organizations) {
+        const uniqueRulesetIds = normalizeRulesetIds(organization.rulesetIds);
+        for (const rulesetId of uniqueRulesetIds) {
+            const assignedOrgs = assignments.get(rulesetId) ?? [];
+            assignedOrgs.push(organization.organizationId);
+            assignments.set(rulesetId, assignedOrgs);
+        }
+    }
+
+    return assignments;
+};
+
+const decorateRulesetForOrganization = (
+    ruleset: Ruleset,
+    organizationId?: Id,
+): Ruleset => {
+    if (!organizationId) {
+        return ruleset;
+    }
+
+    return {
+        ...ruleset,
+        organizationId,
+    };
+};
 
 const upsertOrganizationVenue = (
     organization: Organization,
@@ -156,6 +215,7 @@ export interface FreelanceTrackerStore {
     positionHistories: PositionHistory[];
     venueHistories: VenueHistory[];
     rulesets: Ruleset[];
+    sharedRulesets: Ruleset[];
 
     // --- UI State ---
     loading: boolean;
@@ -179,6 +239,7 @@ export interface FreelanceTrackerStore {
         timezone?: string;
         workweekStartDay?: number;
         notes?: string | null;
+        rulesetIds?: Id[];
     }): Promise<Result<Organization>>;
     createOrganizationPosition(input: {
         organizationId: Id;
@@ -195,7 +256,18 @@ export interface FreelanceTrackerStore {
         orgId: Id,
         update: Partial<Omit<Organization, "organizationId" | "createdAt">>,
     ): Promise<Result<Organization>>;
+    assignRulesetsToOrganization(
+        organizationId: Id,
+        rulesetIds: Id[],
+    ): Promise<Result<Organization>>;
     loadRulesets(orgId: Id): Promise<void>;
+    loadSharedRulesets(): Promise<void>;
+    getSharedRulesetAssignment(
+        rulesetId: Id,
+    ): SharedRulesetAssignmentSummary | null;
+    getSharedRulesetAssignmentSummary(
+        filter?: SharedRulesetAssignmentFilter,
+    ): SharedRulesetAssignmentSummary[];
     createRuleset(
         input: Omit<Ruleset, "rulesetId" | "createdAt">,
     ): Promise<Result<Ruleset>>;
@@ -216,6 +288,7 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
             positionHistories: [],
             venueHistories: [],
             rulesets: [],
+            sharedRulesets: [],
             loading: false,
             error: null,
             isFormOpen: false,
@@ -591,6 +664,9 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                 const normalizedInputName = normalizeOrganizationName(
                     input.name,
                 );
+                const requestedRulesetIds = normalizeRulesetIds(
+                    input.rulesetIds,
+                );
 
                 if (!normalizedInputName) {
                     const validationError: DalError = {
@@ -618,7 +694,24 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                     );
 
                     if (stateOrgMatch) {
-                        return { success: true, data: stateOrgMatch };
+                        const nextRulesetIds = mergeRulesetIds(
+                            stateOrgMatch.rulesetIds,
+                            requestedRulesetIds,
+                        );
+
+                        if (
+                            !rulesetIdsChanged(
+                                stateOrgMatch.rulesetIds,
+                                nextRulesetIds,
+                            )
+                        ) {
+                            return { success: true, data: stateOrgMatch };
+                        }
+
+                        return await get().assignRulesetsToOrganization(
+                            stateOrgMatch.organizationId,
+                            nextRulesetIds,
+                        );
                     }
 
                     const listResult = await dal.organizations.list();
@@ -637,10 +730,35 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                     );
 
                     if (existingOrg) {
+                        const normalizedExistingOrg =
+                            normalizeOrganizationCatalogs(existingOrg);
                         set((state) => {
-                            state.organizations = normalizedOrgs;
+                            state.organizations = normalizedOrgs.map(
+                                normalizeOrganizationCatalogs,
+                            );
                         });
-                        return { success: true, data: existingOrg };
+
+                        const nextRulesetIds = mergeRulesetIds(
+                            normalizedExistingOrg.rulesetIds,
+                            requestedRulesetIds,
+                        );
+
+                        if (
+                            !rulesetIdsChanged(
+                                normalizedExistingOrg.rulesetIds,
+                                nextRulesetIds,
+                            )
+                        ) {
+                            return {
+                                success: true,
+                                data: normalizedExistingOrg,
+                            };
+                        }
+
+                        return await get().assignRulesetsToOrganization(
+                            normalizedExistingOrg.organizationId,
+                            nextRulesetIds,
+                        );
                     }
 
                     const createResult = await dal.organizations.create({
@@ -651,6 +769,7 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                         notes: input.notes ?? null,
                         venues: [],
                         positions: [],
+                        rulesetIds: requestedRulesetIds,
                     });
 
                     if (!createResult.success) {
@@ -939,6 +1058,46 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                 return result;
             },
 
+            async assignRulesetsToOrganization(organizationId, rulesetIds) {
+                set((state) => {
+                    state.loading = true;
+                    state.error = null;
+                });
+
+                try {
+                    const result = await dal.organizations.update(
+                        organizationId,
+                        {
+                            rulesetIds: normalizeRulesetIds(rulesetIds),
+                        },
+                    );
+
+                    if (result.success) {
+                        set((state) => {
+                            const idx = state.organizations.findIndex(
+                                (organization) =>
+                                    organization.organizationId ===
+                                    organizationId,
+                            );
+                            if (idx >= 0) {
+                                state.organizations[idx] =
+                                    normalizeOrganizationCatalogs(result.data);
+                            }
+                        });
+                    } else {
+                        set((state) => {
+                            state.error = dalErrorMessage(result.error);
+                        });
+                    }
+
+                    return result;
+                } finally {
+                    set((state) => {
+                        state.loading = false;
+                    });
+                }
+            },
+
             async createOrganizationPosition(input) {
                 set((state) => {
                     state.loading = true;
@@ -1022,16 +1181,118 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                 const result = await dal.rulesets.listByOrg(orgId);
                 if (result.success) {
                     set((state) => {
-                        state.rulesets = result.data;
+                        state.rulesets = result.data.map((ruleset) =>
+                            decorateRulesetForOrganization(ruleset, orgId),
+                        );
                     });
                 }
+            },
+
+            async loadSharedRulesets() {
+                const result = await dal.rulesets.listAll();
+                if (result.success) {
+                    set((state) => {
+                        state.sharedRulesets = result.data;
+                    });
+                } else {
+                    set((state) => {
+                        state.error = dalErrorMessage(result.error);
+                    });
+                }
+            },
+
+            getSharedRulesetAssignment(rulesetId) {
+                const state = get();
+                const ruleset = state.sharedRulesets.find(
+                    (candidate) => candidate.rulesetId === rulesetId,
+                );
+
+                if (!ruleset) {
+                    return null;
+                }
+
+                const assignmentIndex = buildRulesetAssignmentIndex(
+                    state.organizations,
+                );
+                const assignedOrganizationIds =
+                    assignmentIndex.get(rulesetId) ?? [];
+
+                return {
+                    ruleset,
+                    assignedOrganizationIds,
+                    assignedOrganizationCount: assignedOrganizationIds.length,
+                    isAssigned: assignedOrganizationIds.length > 0,
+                };
+            },
+
+            getSharedRulesetAssignmentSummary(filter) {
+                const includeAssigned = filter?.includeAssigned ?? true;
+                const includeUnassigned = filter?.includeUnassigned ?? true;
+                const state = get();
+                const assignmentIndex = buildRulesetAssignmentIndex(
+                    state.organizations,
+                );
+
+                return state.sharedRulesets
+                    .map((ruleset) => {
+                        const assignedOrganizationIds =
+                            assignmentIndex.get(ruleset.rulesetId) ?? [];
+                        const assignedOrganizationCount =
+                            assignedOrganizationIds.length;
+
+                        return {
+                            ruleset,
+                            assignedOrganizationIds,
+                            assignedOrganizationCount,
+                            isAssigned: assignedOrganizationCount > 0,
+                        };
+                    })
+                    .filter((summary) =>
+                        summary.isAssigned
+                            ? includeAssigned
+                            : includeUnassigned,
+                    );
             },
 
             async createRuleset(input) {
                 const result = await dal.rulesets.create(input);
                 if (result.success) {
                     set((state) => {
-                        state.rulesets = [result.data, ...state.rulesets];
+                        const createdRuleset = decorateRulesetForOrganization(
+                            result.data,
+                            input.organizationId,
+                        );
+
+                        state.rulesets = [createdRuleset, ...state.rulesets];
+                        state.sharedRulesets = [
+                            result.data,
+                            ...state.sharedRulesets.filter(
+                                (ruleset) =>
+                                    ruleset.rulesetId !== result.data.rulesetId,
+                            ),
+                        ];
+
+                        if (input.organizationId) {
+                            const organizationIndex =
+                                state.organizations.findIndex(
+                                    (organization) =>
+                                        organization.organizationId ===
+                                        input.organizationId,
+                                );
+
+                            if (organizationIndex >= 0) {
+                                const organization =
+                                    state.organizations[organizationIndex];
+                                state.organizations[organizationIndex] =
+                                    normalizeOrganizationCatalogs({
+                                        ...organization,
+                                        rulesetIds: mergeRulesetIds(
+                                            organization.rulesetIds,
+                                            [result.data.rulesetId],
+                                        ),
+                                    });
+                            }
+                        }
                     });
                 }
                 return result;
@@ -1043,6 +1304,19 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                     set((state) => {
                         state.rulesets = state.rulesets.filter(
                             (ruleset) => ruleset.rulesetId !== rulesetId,
+                        );
+                        state.sharedRulesets = state.sharedRulesets.filter(
+                            (ruleset) => ruleset.rulesetId !== rulesetId,
+                        );
+
+                        state.organizations = state.organizations.map(
+                            (organization) =>
+                                normalizeOrganizationCatalogs({
+                                    ...organization,
+                                    rulesetIds: organization.rulesetIds.filter(
+                                        (candidate) => candidate !== rulesetId,
+                                    ),
+                                }),
                         );
                     });
                 }
@@ -1056,16 +1330,13 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                 });
 
                 try {
-                    // Delete all associated rulesets
-                    const rulesetResult =
-                        await dal.rulesets.listByOrg(organizationId);
-                    if (rulesetResult.success) {
-                        await Promise.all(
-                            rulesetResult.data.map((ruleset) =>
-                                dal.rulesets.delete(ruleset.rulesetId),
-                            ),
-                        );
-                    }
+                    const cachedOrganization = get().organizations.find(
+                        (organization) =>
+                            organization.organizationId === organizationId,
+                    );
+                    const associatedRulesetIds = normalizeRulesetIds(
+                        cachedOrganization?.rulesetIds,
+                    );
 
                     // Delete all associated entries
                     const allEntries = get().entries;
@@ -1089,11 +1360,24 @@ const useFreelanceTrackerStore = create<FreelanceTrackerStore>()(
                             );
                             state.rulesets = state.rulesets.filter(
                                 (ruleset) =>
-                                    ruleset.organizationId !== organizationId,
+                                    !associatedRulesetIds.includes(
+                                        ruleset.rulesetId,
+                                    ),
                             );
                             state.entries = state.entries.filter(
                                 (entry) =>
                                     entry.organizationId !== organizationId,
+                            );
+                            state.positionHistories =
+                                state.positionHistories.filter(
+                                    (positionHistory) =>
+                                        positionHistory.organizationId !==
+                                        organizationId,
+                                );
+                            state.venueHistories = state.venueHistories.filter(
+                                (venueHistory) =>
+                                    venueHistory.organizationId !==
+                                    organizationId,
                             );
                         });
                     } else {
