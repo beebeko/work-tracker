@@ -41,6 +41,7 @@ import {
     orderBy,
     query,
     updateDoc,
+    where,
 } from 'firebase/firestore';
 import { clientFixture } from '../../__fixtures__/entities.fixtures';
 import { auth } from '../../lib/firebase';
@@ -98,12 +99,10 @@ describe('listClients', () => {
   });
 
   describe('filtering', () => {
-    it('filters out docs not owned by the current user', async () => {
-      (getDocs as jest.Mock).mockResolvedValueOnce({
-        docs: [makeClientDoc({ ownerUid: 'other-uid' })],
-      });
-      const result = await listClients();
-      expect(result).toHaveLength(0);
+    it('queries with ownerUid where clause so server-side filtering is applied', async () => {
+      (getDocs as jest.Mock).mockResolvedValueOnce({ docs: [] });
+      await listClients();
+      expect(where).toHaveBeenCalledWith('ownerUid', '==', 'test-uid');
     });
   });
 

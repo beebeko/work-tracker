@@ -64,6 +64,18 @@ function RootLayoutNav() {
           name="client/[clientId]/positions"
           options={{ title: 'Positions', headerBackTitle: 'Gigs' }}
         />
+        <Stack.Screen
+          name="settings/profile"
+          options={{ title: 'Profile', headerBackTitle: 'Settings' }}
+        />
+        <Stack.Screen
+          name="settings/email-accounts"
+          options={{ title: 'Email Accounts', headerBackTitle: 'Settings' }}
+        />
+        <Stack.Screen
+          name="invoice/[invoiceId]/index"
+          options={{ title: 'Invoice', headerBackTitle: 'Back' }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
       {status === 'unauthenticated' && <Redirect href="/(auth)/sign-in" />}

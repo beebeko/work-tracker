@@ -7,6 +7,17 @@ export interface InvoiceLineItem {
   amount: number;
 }
 
+/** A point-in-time snapshot of an invoice before it was regenerated */
+export interface InvoiceSnapshot {
+  lineItems: InvoiceLineItem[];
+  subtotal: number;
+  totalAmount: number;
+  entryIds: string[];
+  pdfStoragePath?: string;
+  /** Server timestamp when this version was superseded */
+  supersededAt: Timestamp;
+}
+
 export type InvoiceStatus = 'draft' | 'sent' | 'paid';
 
 export interface Invoice {
@@ -17,6 +28,10 @@ export interface Invoice {
   invoiceNumber: string;
   status: InvoiceStatus;
   lineItems: InvoiceLineItem[];
+  /** Entry IDs included in this invoice */
+  entryIds: string[];
+  /** Email account ID used to send this invoice */
+  senderEmailAccountId?: string;
   subtotal: number;
   totalAmount: number;
   /** ISO date string (YYYY-MM-DD) */
@@ -25,6 +40,8 @@ export interface Invoice {
   /** Firebase Storage path to the generated PDF */
   pdfStoragePath?: string;
   sentAt?: Timestamp;
+  /** Previous versions, oldest first */
+  history: InvoiceSnapshot[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

@@ -61,6 +61,18 @@ export default function GigEntriesScreen() {
           <Pressable
             onPress={() =>
               router.push({
+                pathname: '/(modals)/invoice-entries',
+                params: { clientId, gigId },
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Create invoice"
+          >
+            <Text style={{ color: colors.accent, fontSize: 15 }}>Invoice</Text>
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              router.push({
                 pathname: '/(modals)/entry-form',
                 params: { clientId, gigId },
               })

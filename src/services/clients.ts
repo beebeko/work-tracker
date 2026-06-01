@@ -9,6 +9,7 @@ import {
     query,
     serverTimestamp,
     updateDoc,
+    where,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Client, CreateClientInput, UpdateClientInput } from '../types/client';
@@ -30,6 +31,9 @@ function toClient(id: string, data: Record<string, unknown>): Client {
     address: data.address as string | undefined,
     notes: data.notes as string | undefined,
     overtimeRules: data.overtimeRules as Client['overtimeRules'],
+    invoicePrefix: (data.invoicePrefix as string) ?? '',
+    nextInvoiceSeq: (data.nextInvoiceSeq as number) ?? 1,
+    defaultEmailAccountId: data.defaultEmailAccountId as string | undefined,
     createdAt: data.createdAt as Client['createdAt'],
     updatedAt: data.updatedAt as Client['updatedAt'],
   };
@@ -37,9 +41,9 @@ function toClient(id: string, data: Record<string, unknown>): Client {
 
 export async function listClients(): Promise<Client[]> {
   const uid = requireAuth();
-  const q = query(collection(db, COLLECTION), orderBy('name'));
+  const q = query(collection(db, COLLECTION), where('ownerUid', '==', uid), orderBy('name'));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => toClient(d.id, d.data())).filter((c) => c.ownerUid === uid);
+  return snap.docs.map((d) => toClient(d.id, d.data()));
 }
 
 export async function getClient(id: string): Promise<Client> {

@@ -1,5 +1,5 @@
+import { fireEvent, render } from '@testing-library/react-native';
 import { Field } from '../Field';
-import { render, fireEvent } from '@testing-library/react-native';
 
 describe('Field', () => {
   describe('happy path', () => {
@@ -41,9 +41,7 @@ describe('Field', () => {
     });
 
     it('does not render error message when error is undefined', () => {
-      const { queryByText } = render(
-        <Field label="Email" value="" onChangeText={jest.fn()} />,
-      );
+      const { queryByText } = render(<Field label="Email" value="" onChangeText={jest.fn()} />);
       expect(queryByText('Email is required')).toBeNull();
     });
   });
@@ -55,9 +53,7 @@ describe('Field', () => {
     });
 
     it('renders with empty label without crashing', () => {
-      const { UNSAFE_getByType } = render(
-        <Field label="" value="" onChangeText={jest.fn()} />,
-      );
+      const { UNSAFE_getByType } = render(<Field label="" value="" onChangeText={jest.fn()} />);
       expect(UNSAFE_getByType(require('react-native').TextInput)).toBeTruthy();
     });
   });
@@ -65,13 +61,7 @@ describe('Field', () => {
   describe('edge cases', () => {
     it('passes additional TextInput props through', () => {
       const { getByTestId } = render(
-        <Field
-          label="PIN"
-          value=""
-          onChangeText={jest.fn()}
-          secureTextEntry
-          testID="pin-input"
-        />,
+        <Field label="PIN" value="" onChangeText={jest.fn()} secureTextEntry testID="pin-input" />,
       );
       expect(getByTestId('pin-input')).toBeTruthy();
     });

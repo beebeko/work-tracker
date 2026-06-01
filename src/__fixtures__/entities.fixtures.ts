@@ -1,8 +1,10 @@
 import { Timestamp } from 'firebase/firestore';
 import { Client, DEFAULT_OVERTIME_RULES } from '../types/client';
+import { EmailAccount } from '../types/emailAccount';
 import { Gig } from '../types/gig';
 import { Invoice } from '../types/invoice';
 import { Position } from '../types/position';
+import { UserProfile } from '../types/userProfile';
 import { LumpSumEntry, ShiftEntry } from '../types/workEntry';
 
 const mockTimestamp = { toDate: () => new Date('2026-01-01') } as unknown as Timestamp;
@@ -18,6 +20,8 @@ export const clientFixture: Client = {
     ...DEFAULT_OVERTIME_RULES,
     mealPenaltyEnabled: true,
   },
+  invoicePrefix: 'AP',
+  nextInvoiceSeq: 1,
   createdAt: mockTimestamp,
   updatedAt: mockTimestamp,
 };
@@ -87,9 +91,30 @@ export const invoiceFixture: Invoice = {
     { description: 'Key Grip — 8.5 hours @ $55', hours: 8.5, rate: 55, amount: 467.5 },
     { description: 'Box Rental', amount: 500 },
   ],
+  entryIds: ['entry-1', 'entry-2'],
   subtotal: 967.5,
   totalAmount: 967.5,
   dueDate: '2026-06-01',
+  history: [],
+  createdAt: mockTimestamp,
+  updatedAt: mockTimestamp,
+};
+
+export const userProfileFixture: UserProfile = {
+  uid: 'test-uid',
+  name: 'Alice Smith',
+  email: 'alice@example.com',
+  address: '123 Main St, Los Angeles, CA',
+  phone: '555-1234',
+  updatedAt: mockTimestamp,
+};
+
+export const emailAccountFixture: EmailAccount = {
+  id: 'acc-1',
+  ownerUid: 'test-uid',
+  displayName: 'Work',
+  fromAddress: 'work@example.com',
+  isDefault: true,
   createdAt: mockTimestamp,
   updatedAt: mockTimestamp,
 };

@@ -117,9 +117,7 @@ export default function EntryFormScreen() {
   }
 
   function updateMealBreak(index: number, field: keyof MealBreak, value: string) {
-    setMealBreaks((prev) =>
-      prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)),
-    );
+    setMealBreaks((prev) => prev.map((b, i) => (i === index ? { ...b, [field]: value } : b)));
   }
 
   const handleSave = useCallback(async () => {
@@ -159,9 +157,22 @@ export default function EntryFormScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    type, date, positionId, notes, startTime, endTime, mealBreaks,
-    amount, description, isEditing, existing, clientId, gigId,
-    updateEntry, createEntry, router,
+    type,
+    date,
+    positionId,
+    notes,
+    startTime,
+    endTime,
+    mealBreaks,
+    amount,
+    description,
+    isEditing,
+    existing,
+    clientId,
+    gigId,
+    updateEntry,
+    createEntry,
+    router,
   ]);
 
   const isBusy = createEntry.isPending || updateEntry.isPending;
@@ -215,18 +226,13 @@ export default function EntryFormScreen() {
           Position
         </Text>
         {positionError ? (
-          <Text
-            style={[typography.caption, { color: colors.danger, marginBottom: spacing.sm }]}
-          >
+          <Text style={[typography.caption, { color: colors.danger, marginBottom: spacing.sm }]}>
             {positionError}
           </Text>
         ) : null}
         {!positions?.length ? (
           <Text
-            style={[
-              typography.body,
-              { color: colors.textSecondary, marginBottom: spacing.lg },
-            ]}
+            style={[typography.body, { color: colors.textSecondary, marginBottom: spacing.lg }]}
           >
             No positions yet — create a position first.
           </Text>
@@ -239,10 +245,8 @@ export default function EntryFormScreen() {
                 style={[
                   styles.positionOption,
                   {
-                    borderColor:
-                      positionId === p.id ? colors.accent : colors.border,
-                    backgroundColor:
-                      positionId === p.id ? `${colors.accent}22` : colors.surface,
+                    borderColor: positionId === p.id ? colors.accent : colors.border,
+                    backgroundColor: positionId === p.id ? `${colors.accent}22` : colors.surface,
                   },
                 ]}
                 accessibilityRole="radio"
@@ -278,10 +282,7 @@ export default function EntryFormScreen() {
             />
 
             <Text
-              style={[
-                typography.label,
-                { color: colors.textSecondary, marginBottom: spacing.sm },
-              ]}
+              style={[typography.label, { color: colors.textSecondary, marginBottom: spacing.sm }]}
             >
               Meal Breaks
             </Text>
@@ -360,15 +361,10 @@ export default function EntryFormScreen() {
         <Pressable
           onPress={handleSave}
           disabled={isBusy}
-          style={[
-            styles.saveButton,
-            { backgroundColor: colors.accent, opacity: isBusy ? 0.6 : 1 },
-          ]}
+          style={[styles.saveButton, { backgroundColor: colors.accent, opacity: isBusy ? 0.6 : 1 }]}
           accessibilityRole="button"
         >
-          <Text style={[typography.label, { color: '#fff' }]}>
-            {isBusy ? 'Saving…' : 'Save'}
-          </Text>
+          <Text style={[typography.label, { color: '#fff' }]}>{isBusy ? 'Saving…' : 'Save'}</Text>
         </Pressable>
       </ScrollView>
     </Screen>

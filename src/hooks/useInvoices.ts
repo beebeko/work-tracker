@@ -5,6 +5,7 @@ import {
     getInvoice,
     listInvoices,
     listInvoicesByClient,
+    listInvoicesByGig,
     updateInvoice,
 } from '../services/invoices';
 import { queryKeys } from '../services/queryKeys';
@@ -22,6 +23,14 @@ export function useInvoicesByClient(clientId: string) {
     queryKey: queryKeys.invoices.byClient(clientId),
     queryFn: () => listInvoicesByClient(clientId),
     enabled: Boolean(clientId),
+  });
+}
+
+export function useInvoicesByGig(gigId: string) {
+  return useQuery({
+    queryKey: queryKeys.invoices.byGig(gigId),
+    queryFn: () => listInvoicesByGig(gigId),
+    enabled: Boolean(gigId),
   });
 }
 

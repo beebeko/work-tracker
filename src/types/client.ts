@@ -39,6 +39,12 @@ export interface Client {
   address?: string;
   notes?: string;
   overtimeRules: OvertimeRules;
+  /** Prefix for invoice numbers, e.g. "BMH" */
+  invoicePrefix: string;
+  /** Next sequence number; incremented per new invoice (not regeneration) */
+  nextInvoiceSeq: number;
+  /** ID of the default EmailAccount to send invoices from */
+  defaultEmailAccountId?: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

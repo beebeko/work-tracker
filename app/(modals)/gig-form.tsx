@@ -96,7 +96,19 @@ export default function GigFormScreen() {
       Alert.alert('Error', 'Failed to save gig. Please try again.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, status, startDate, endDate, notes, isEditing, existing, clientId, updateGig, createGig, router]);
+  }, [
+    name,
+    status,
+    startDate,
+    endDate,
+    notes,
+    isEditing,
+    existing,
+    clientId,
+    updateGig,
+    createGig,
+    router,
+  ]);
 
   const isBusy = createGig.isPending || updateGig.isPending;
 
@@ -174,9 +186,7 @@ export default function GigFormScreen() {
           style={[styles.saveButton, { backgroundColor: colors.accent, opacity: isBusy ? 0.6 : 1 }]}
           accessibilityRole="button"
         >
-          <Text style={[typography.label, { color: '#fff' }]}>
-            {isBusy ? 'Saving…' : 'Save'}
-          </Text>
+          <Text style={[typography.label, { color: '#fff' }]}>{isBusy ? 'Saving…' : 'Save'}</Text>
         </Pressable>
       </ScrollView>
     </Screen>

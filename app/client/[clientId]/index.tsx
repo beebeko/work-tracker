@@ -35,7 +35,7 @@ export default function ClientGigsScreen() {
             <Text style={{ color: colors.accent, fontSize: 15 }}>Edit</Text>
           </Pressable>
           <Pressable
-            onPress={() => router.push({ pathname: `/client/${clientId}/positions` })}
+            onPress={() => router.push(`/client/${clientId}/positions` as never)}
             accessibilityRole="button"
             accessibilityLabel="Manage positions"
           >

@@ -106,9 +106,7 @@ export default function PositionFormScreen() {
           style={[styles.saveButton, { backgroundColor: colors.accent, opacity: isBusy ? 0.6 : 1 }]}
           accessibilityRole="button"
         >
-          <Text style={[typography.label, { color: '#fff' }]}>
-            {isBusy ? 'Saving…' : 'Save'}
-          </Text>
+          <Text style={[typography.label, { color: '#fff' }]}>{isBusy ? 'Saving…' : 'Save'}</Text>
         </Pressable>
       </ScrollView>
     </Screen>

@@ -31,12 +31,15 @@ function toInvoice(id: string, data: Record<string, unknown>): Invoice {
     invoiceNumber: data.invoiceNumber as string,
     status: data.status as InvoiceStatus,
     lineItems: data.lineItems as Invoice['lineItems'],
+    entryIds: (data.entryIds as string[]) ?? [],
+    senderEmailAccountId: data.senderEmailAccountId as string | undefined,
     subtotal: data.subtotal as number,
     totalAmount: data.totalAmount as number,
     dueDate: data.dueDate as string | undefined,
     notes: data.notes as string | undefined,
     pdfStoragePath: data.pdfStoragePath as string | undefined,
     sentAt: data.sentAt as Invoice['sentAt'],
+    history: (data.history as Invoice['history']) ?? [],
     createdAt: data.createdAt as Invoice['createdAt'],
     updatedAt: data.updatedAt as Invoice['updatedAt'],
   };
@@ -59,6 +62,18 @@ export async function listInvoicesByClient(clientId: string): Promise<Invoice[]>
     collection(db, COLLECTION),
     where('ownerUid', '==', uid),
     where('clientId', '==', clientId),
+    orderBy('createdAt', 'desc'),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => toInvoice(d.id, d.data()));
+}
+
+export async function listInvoicesByGig(gigId: string): Promise<Invoice[]> {
+  const uid = requireAuth();
+  const q = query(
+    collection(db, COLLECTION),
+    where('ownerUid', '==', uid),
+    where('gigId', '==', gigId),
     orderBy('createdAt', 'desc'),
   );
   const snap = await getDocs(q);
