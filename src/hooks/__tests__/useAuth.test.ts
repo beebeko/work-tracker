@@ -1,13 +1,21 @@
-jest.mock('firebase/app', () => ({ initializeApp: jest.fn(() => ({})), getApps: jest.fn(() => []), getApp: jest.fn(() => ({})) }));
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({})),
+  getApps: jest.fn(() => []),
+  getApp: jest.fn(() => ({})),
+}));
 jest.mock('firebase/firestore', () => ({ getFirestore: jest.fn(() => ({})) }));
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(() => ({})),
   GoogleAuthProvider: jest.fn(() => ({})),
   onAuthStateChanged: jest.fn(),
 }));
-jest.mock('../../lib/firebase', () => ({ db: {}, auth: { currentUser: null }, googleProvider: {} }));
+jest.mock('../../lib/firebase', () => ({
+  db: {},
+  auth: { currentUser: null },
+  googleProvider: {},
+}));
 
-import { renderHook, act } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 import * as firebaseAuth from 'firebase/auth';
 import { useAuth } from '../useAuth';
 
@@ -26,10 +34,12 @@ describe('useAuth', () => {
 
     it('transitions to authenticated when a user is returned', () => {
       const fakeUser = { uid: 'abc', email: 'a@b.com' };
-      onAuthStateChangedMock.mockImplementation((_auth: unknown, callback: (u: unknown) => void) => {
-        callback(fakeUser);
-        return () => {};
-      });
+      onAuthStateChangedMock.mockImplementation(
+        (_auth: unknown, callback: (u: unknown) => void) => {
+          callback(fakeUser);
+          return () => {};
+        },
+      );
       const { result } = renderHook(() => useAuth());
       expect(result.current.status).toBe('authenticated');
       expect(result.current.user).toEqual(fakeUser);

@@ -1,19 +1,42 @@
+import { ConfirmDialog } from '@/src/components/ui/ConfirmDialog';
 import { EmptyState } from '@/src/components/ui/EmptyState';
 import { Row } from '@/src/components/ui/Row';
 import { Screen } from '@/src/components/ui/Screen';
-import { useClients } from '@/src/hooks/useClients';
+import { useClients, useDeleteClient } from '@/src/hooks/useClients';
 import { useTheme } from '@/src/theme';
 import { Client } from '@/src/types/client';
-import { useRouter } from 'expo-router';
-import { FlatList, StyleSheet } from 'react-native';
+import { useNavigation, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text } from 'react-native';
 
 export default function ClientsScreen() {
   const { data: clients, isLoading, isError } = useClients();
+  const deleteClient = useDeleteClient();
   const router = useRouter();
+  const navigation = useNavigation();
   const { colors } = useTheme();
 
-  function handleSelectClient(client: Client) {
-    router.push(`/client/${client.id}`);
+  const [pendingDelete, setPendingDelete] = useState<Client | null>(null);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          onPress={() => router.push('/(modals)/client-form')}
+          style={{ marginRight: 4 }}
+          accessibilityRole="button"
+          accessibilityLabel="Add client"
+        >
+          <Text style={{ color: colors.accent, fontSize: 28, lineHeight: 32 }}>+</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation, router, colors.accent]);
+
+  async function handleDelete() {
+    if (!pendingDelete) return;
+    await deleteClient.mutateAsync(pendingDelete.id);
+    setPendingDelete(null);
   }
 
   if (isLoading) {
@@ -44,16 +67,27 @@ export default function ClientsScreen() {
         ]}
         style={{ backgroundColor: colors.background }}
         ListEmptyComponent={
-          <EmptyState message="No clients yet" hint="Add a client to get started." />
+          <EmptyState message="No clients yet" hint="Tap + to add your first client." />
         }
         renderItem={({ item }) => (
           <Row
             title={item.name}
             subtitle={item.email ?? undefined}
             chevron
-            onPress={() => handleSelectClient(item)}
+            onPress={() => router.push(`/client/${item.id}`)}
+            onLongPress={() => setPendingDelete(item)}
           />
         )}
+      />
+
+      <ConfirmDialog
+        visible={pendingDelete !== null}
+        title="Delete Client"
+        message={`Delete "${pendingDelete?.name}"? This will not delete their gigs or entries.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+        onCancel={() => setPendingDelete(null)}
       />
     </Screen>
   );

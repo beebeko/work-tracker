@@ -10,9 +10,11 @@ interface Props {
   /** Show a trailing chevron to indicate drill-down. Default: false */
   chevron?: boolean;
   onPress?: () => void;
+  /** Long-press handler (e.g. for delete confirmation) */
+  onLongPress?: () => void;
 }
 
-export function Row({ title, subtitle, right, chevron = false, onPress }: Props) {
+export function Row({ title, subtitle, right, chevron = false, onPress, onLongPress }: Props) {
   const { colors, spacing, typography } = useTheme();
 
   const content = (
@@ -32,10 +34,11 @@ export function Row({ title, subtitle, right, chevron = false, onPress }: Props)
     </View>
   );
 
-  if (onPress) {
+  if (onPress || onLongPress) {
     return (
       <Pressable
         onPress={onPress}
+        onLongPress={onLongPress}
         style={({ pressed }) => [
           { backgroundColor: pressed ? colors.surfaceHighlight : colors.surface },
           { paddingHorizontal: spacing.lg },

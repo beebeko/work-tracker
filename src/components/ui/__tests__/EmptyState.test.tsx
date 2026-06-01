@@ -1,7 +1,18 @@
-jest.mock('firebase/app', () => ({ initializeApp: jest.fn(() => ({})), getApps: jest.fn(() => []), getApp: jest.fn(() => ({})) }));
+jest.mock('firebase/app', () => ({
+  initializeApp: jest.fn(() => ({})),
+  getApps: jest.fn(() => []),
+  getApp: jest.fn(() => ({})),
+}));
 jest.mock('firebase/firestore', () => ({ getFirestore: jest.fn(() => ({})) }));
-jest.mock('firebase/auth', () => ({ getAuth: jest.fn(() => ({})), GoogleAuthProvider: jest.fn(() => ({})) }));
-jest.mock('../../../lib/firebase', () => ({ db: {}, auth: { currentUser: null }, googleProvider: {} }));
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(() => ({})),
+  GoogleAuthProvider: jest.fn(() => ({})),
+}));
+jest.mock('../../../lib/firebase', () => ({
+  db: {},
+  auth: { currentUser: null },
+  googleProvider: {},
+}));
 
 import { render, screen } from '@testing-library/react-native';
 import { EmptyState } from '../EmptyState';

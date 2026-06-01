@@ -51,6 +51,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(modals)" options={{ headerShown: false }} />
         <Stack.Screen
           name="client/[clientId]/index"
           options={{ title: 'Gigs', headerBackTitle: 'Clients' }}
@@ -58,6 +59,10 @@ function RootLayoutNav() {
         <Stack.Screen
           name="client/[clientId]/gig/[gigId]"
           options={{ title: 'Entries', headerBackTitle: 'Gigs' }}
+        />
+        <Stack.Screen
+          name="client/[clientId]/positions"
+          options={{ title: 'Positions', headerBackTitle: 'Gigs' }}
         />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
