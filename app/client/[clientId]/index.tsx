@@ -42,6 +42,13 @@ export default function ClientGigsScreen() {
             <Text style={{ color: colors.accent, fontSize: 15 }}>Positions</Text>
           </Pressable>
           <Pressable
+            onPress={() => router.push(`/client/${clientId}/senders` as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Manage email senders"
+          >
+            <Text style={{ color: colors.accent, fontSize: 15 }}>Senders</Text>
+          </Pressable>
+          <Pressable
             onPress={() => router.push({ pathname: '/(modals)/gig-form', params: { clientId } })}
             accessibilityRole="button"
             accessibilityLabel="Add gig"

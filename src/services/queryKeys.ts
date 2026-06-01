@@ -30,4 +30,10 @@ export const queryKeys = {
     byClient: (clientId: string) => ['invoices', 'byClient', clientId] as const,
     byGig: (gigId: string) => ['invoices', 'byGig', gigId] as const,
   },
+  clientSenders: {
+    all: (clientId: string) => ['clients', clientId, 'senders'] as const,
+  },
+  pendingImports: {
+    all: ['pendingImports'] as const,
+  },
 } as const;

@@ -11,16 +11,11 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { Client, CreateClientInput, UpdateClientInput } from '../types/client';
+import { requireAuth } from './_requireAuth';
 
 const COLLECTION = 'clients';
-
-function requireAuth(): string {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Not authenticated');
-  return uid;
-}
 
 function toClient(id: string, data: Record<string, unknown>): Client {
   return {

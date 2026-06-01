@@ -1,14 +1,9 @@
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { UpdateUserProfileInput, UserProfile } from '../types/userProfile';
+import { requireAuth } from './_requireAuth';
 
 const COLLECTION = 'userProfiles';
-
-function requireAuth(): string {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Not authenticated');
-  return uid;
-}
 
 function toProfile(uid: string, data: Record<string, unknown>): UserProfile {
   return {

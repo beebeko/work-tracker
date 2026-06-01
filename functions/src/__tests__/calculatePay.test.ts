@@ -3,10 +3,10 @@
  * This is a copy of the app-side pay engine; the same coverage rules apply (≥95%).
  */
 import {
-  calcShiftMinutes,
-  calculateWeeklyPay,
-  OvertimeRules,
-  parseTimeToMinutes,
+    calcShiftMinutes,
+    calculateWeeklyPay,
+    OvertimeRules,
+    parseTimeToMinutes,
 } from '../pay/calculatePay';
 
 const defaultRules: OvertimeRules = {
