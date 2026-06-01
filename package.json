@@ -45,9 +45,9 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "node_modules/.bin/jest",
+    "test": "node_modules/.bin/jest --forceExit",
     "test:watch": "node_modules/.bin/jest --watch",
-    "test:coverage": "node_modules/.bin/jest --coverage"
+    "test:coverage": "node_modules/.bin/jest --coverage --forceExit"
   },
   "jest": {
     "preset": "jest-expo",
@@ -61,7 +61,10 @@
       "src/**/*.{ts,tsx}",
       "!src/**/*.d.ts",
       "!src/types/**",
-      "!src/lib/**"
+      "!src/lib/**",
+      "!src/test-utils/**",
+      "!src/__fixtures__/**",
+      "!src/__mocks__/**"
     ],
     "coverageThreshold": {
       "global": {
