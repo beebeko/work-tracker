@@ -8,15 +8,15 @@
 
 ## Available agents
 
-| Agent | Invoke when... |
-|---|---|
-| `feature-manager` | Implementing any new feature |
-| `ai-manager` | AI tooling needs auditing or updating |
-| `bug-resolver` | Investigating and fixing a bug |
-| `code-reviewer` | Before opening any PR |
-| `test-writer` | Auditing or writing missing tests |
-| `data-modeler` | Designing or reviewing a Firestore schema |
-| `refactor-guide` | Cleaning up complex or duplicated code |
+| Agent             | Invoke when...                            |
+| ----------------- | ----------------------------------------- |
+| `feature-manager` | Implementing any new feature              |
+| `ai-manager`      | AI tooling needs auditing or updating     |
+| `bug-resolver`    | Investigating and fixing a bug            |
+| `code-reviewer`   | Before opening any PR                     |
+| `test-writer`     | Auditing or writing missing tests         |
+| `data-modeler`    | Designing or reviewing a Firestore schema |
+| `refactor-guide`  | Cleaning up complex or duplicated code    |
 
 ## Available prompts (`/` in chat)
 
@@ -33,4 +33,3 @@
 - **Data fetching**: React Query — no direct Firestore calls from components
 - **Testing**: Jest + React Testing Library, 80% global coverage, 95% for `src/pay/`
 - **Style**: ESLint + Prettier (run `npm run lint` and `npm run format:check`)
-

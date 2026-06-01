@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner() {
+      return request.auth != null && request.auth.uid == resource.data.ownerUid;
+    }
+
+    function isOwnerForCreate() {
+      return request.auth != null && request.auth.uid == request.resource.data.ownerUid;
+    }
+
+    // clients/{clientId}
+    match /clients/{clientId} {
+      allow read, update, delete: if isOwner();
+      allow create: if isOwnerForCreate();
+
+      // clients/{clientId}/positions/{positionId}
+      match /positions/{positionId} {
+        allow read, update, delete: if isOwner();
+        allow create: if isOwnerForCreate();
+      }
+
+      // clients/{clientId}/gigs/{gigId}
+      match /gigs/{gigId} {
+        allow read, update, delete: if isOwner();
+        allow create: if isOwnerForCreate();
+
+        // clients/{clientId}/gigs/{gigId}/entries/{entryId}
+        match /entries/{entryId} {
+          allow read, update, delete: if isOwner();
+          allow create: if isOwnerForCreate();
+        }
+      }
+    }
+
+    // invoices/{invoiceId}
+    match /invoices/{invoiceId} {
+      allow read, update, delete: if isOwner();
+      allow create: if isOwnerForCreate();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

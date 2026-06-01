@@ -1,8 +1,8 @@
 ---
-description: "Generate or refine the OpenAI extraction prompt used to parse freeform job emails. Invoke with a sample email body to generate a tested extraction prompt."
+description: 'Generate or refine the OpenAI extraction prompt used to parse freeform job emails. Invoke with a sample email body to generate a tested extraction prompt.'
 agent: agent
 tools: [read, search]
-argument-hint: "Paste a sample email body to base the prompt on"
+argument-hint: 'Paste a sample email body to base the prompt on'
 ---
 
 Read the `WorkEntry` and `Gig` type definitions from `src/types/` to understand the target data shape.
