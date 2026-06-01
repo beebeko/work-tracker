@@ -1,15 +1,15 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { CreateInvoiceInput, Invoice, InvoiceStatus, UpdateInvoiceInput } from '../types/invoice';

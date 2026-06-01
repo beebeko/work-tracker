@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createGig,
-  deleteGig,
-  getGig,
-  listActiveGigs,
-  listGigs,
-  updateGig,
+    createGig,
+    deleteGig,
+    getGig,
+    listActiveGigs,
+    listGigs,
+    updateGig,
 } from '../services/gigs';
 import { queryKeys } from '../services/queryKeys';
 import { CreateGigInput, UpdateGigInput } from '../types/gig';

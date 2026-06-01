@@ -1,14 +1,14 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
 } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { Client, CreateClientInput, UpdateClientInput } from '../types/client';
@@ -39,9 +39,7 @@ export async function listClients(): Promise<Client[]> {
   const uid = requireAuth();
   const q = query(collection(db, COLLECTION), orderBy('name'));
   const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => toClient(d.id, d.data()))
-    .filter((c) => c.ownerUid === uid);
+  return snap.docs.map((d) => toClient(d.id, d.data())).filter((c) => c.ownerUid === uid);
 }
 
 export async function getClient(id: string): Promise<Client> {

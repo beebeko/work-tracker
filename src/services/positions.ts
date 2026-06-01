@@ -1,14 +1,14 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CreatePositionInput, Position, UpdatePositionInput } from '../types/position';

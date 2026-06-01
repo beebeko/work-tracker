@@ -1,23 +1,23 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import {
-  CreateWorkEntryInput,
-  LumpSumEntry,
-  ShiftEntry,
-  UpdateWorkEntryInput,
-  WorkEntry,
+    CreateWorkEntryInput,
+    LumpSumEntry,
+    ShiftEntry,
+    UpdateWorkEntryInput,
+    WorkEntry,
 } from '../types/workEntry';
 
 function collectionPath(clientId: string, gigId: string) {
@@ -122,10 +122,6 @@ export async function updateEntry(
   });
 }
 
-export async function deleteEntry(
-  clientId: string,
-  gigId: string,
-  entryId: string,
-): Promise<void> {
+export async function deleteEntry(clientId: string, gigId: string, entryId: string): Promise<void> {
   await deleteDoc(docPath(clientId, gigId, entryId));
 }

@@ -41,7 +41,11 @@ Implement the fix. Then:
 
 If the fix exposes a design issue (e.g., function too complex, wrong abstraction), invoke the `refactor-guide` agent rather than patching over it.
 
-## Phase 5: PR
+## Phase 5: Review
+
+Hand off to the `code-reviewer` agent for pre-PR review.
+
+## Phase 6: PR
 
 Run the `commit-message` prompt and `pr-description` prompt. The PR description must include:
 

@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createEntry,
-  deleteEntry,
-  getEntry,
-  listEntries,
-  listEntriesByPosition,
-  updateEntry,
+    createEntry,
+    deleteEntry,
+    getEntry,
+    listEntries,
+    listEntriesByPosition,
+    updateEntry,
 } from '../services/entries';
 import { queryKeys } from '../services/queryKeys';
 import { CreateWorkEntryInput, UpdateWorkEntryInput } from '../types/workEntry';

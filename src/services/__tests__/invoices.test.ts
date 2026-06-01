@@ -34,17 +34,26 @@ jest.mock('../../lib/firebase', () => ({
   googleProvider: {},
 }));
 
-import { addDoc, deleteDoc, doc, getDoc, getDocs, orderBy, updateDoc, where } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
-import { auth } from '../../lib/firebase';
-import { invoiceFixture } from '../../__fixtures__/entities.fixtures';
 import {
-  createInvoice,
-  deleteInvoice,
-  getInvoice,
-  listInvoices,
-  listInvoicesByClient,
-  updateInvoice,
+    addDoc,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    Timestamp,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
+import { invoiceFixture } from '../../__fixtures__/entities.fixtures';
+import { auth } from '../../lib/firebase';
+import {
+    createInvoice,
+    deleteInvoice,
+    getInvoice,
+    listInvoices,
+    listInvoicesByClient,
+    updateInvoice,
 } from '../invoices';
 
 const mockTimestamp = { toDate: () => new Date('2026-01-01') } as unknown as Timestamp;

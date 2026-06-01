@@ -34,15 +34,14 @@ jest.mock('../../lib/firebase', () => ({
   googleProvider: {},
 }));
 
-import { addDoc, deleteDoc, doc, getDoc, getDocs, orderBy, updateDoc } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
+import { addDoc, deleteDoc, doc, getDoc, getDocs, orderBy, Timestamp, updateDoc } from 'firebase/firestore';
 import { positionFixture } from '../../__fixtures__/entities.fixtures';
 import {
-  createPosition,
-  deletePosition,
-  getPosition,
-  listPositions,
-  updatePosition,
+    createPosition,
+    deletePosition,
+    getPosition,
+    listPositions,
+    updatePosition,
 } from '../positions';
 
 const mockTimestamp = { toDate: () => new Date('2026-01-01') } as unknown as Timestamp;
@@ -131,10 +130,7 @@ describe('updatePosition', () => {
     it('calls updateDoc with the patch', async () => {
       (updateDoc as jest.Mock).mockResolvedValueOnce(undefined);
       await updatePosition('client-1', 'position-1', { baseRate: 60 });
-      expect(updateDoc).toHaveBeenCalledWith(
-        undefined,
-        expect.objectContaining({ baseRate: 60 }),
-      );
+      expect(updateDoc).toHaveBeenCalledWith(undefined, expect.objectContaining({ baseRate: 60 }));
     });
   });
 });

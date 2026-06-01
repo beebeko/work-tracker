@@ -32,18 +32,18 @@ jest.mock('firebase/auth', () => ({
 }));
 
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  updateDoc,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    updateDoc,
 } from 'firebase/firestore';
-import { auth } from '../../lib/firebase';
 import { clientFixture } from '../../__fixtures__/entities.fixtures';
+import { auth } from '../../lib/firebase';
 import { createClient, deleteClient, getClient, listClients, updateClient } from '../clients';
 
 // Mock the firebase lib module so auth.currentUser returns our test-uid

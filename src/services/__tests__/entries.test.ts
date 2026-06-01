@@ -34,16 +34,25 @@ jest.mock('../../lib/firebase', () => ({
   googleProvider: {},
 }));
 
-import { addDoc, deleteDoc, doc, getDoc, getDocs, orderBy, updateDoc, where } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
+import {
+    addDoc,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    Timestamp,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
 import { lumpSumEntryFixture, shiftEntryFixture } from '../../__fixtures__/entities.fixtures';
 import {
-  createEntry,
-  deleteEntry,
-  getEntry,
-  listEntries,
-  listEntriesByPosition,
-  updateEntry,
+    createEntry,
+    deleteEntry,
+    getEntry,
+    listEntries,
+    listEntriesByPosition,
+    updateEntry,
 } from '../entries';
 
 const mockTimestamp = { toDate: () => new Date('2026-01-01') } as unknown as Timestamp;

@@ -52,16 +52,40 @@ jest.mock('../../services/gigs');
 jest.mock('../../services/entries');
 
 import { renderHook, waitFor } from '@testing-library/react-native';
+import {
+    clientFixture,
+    gigFixture,
+    positionFixture,
+    shiftEntryFixture,
+} from '../../__fixtures__/entities.fixtures';
 import * as clientsService from '../../services/clients';
-import * as positionsService from '../../services/positions';
-import * as gigsService from '../../services/gigs';
 import * as entriesService from '../../services/entries';
-import { clientFixture, gigFixture, positionFixture, shiftEntryFixture } from '../../__fixtures__/entities.fixtures';
+import * as gigsService from '../../services/gigs';
+import * as positionsService from '../../services/positions';
 import { createWrapper } from '../../test-utils/queryWrapper';
-import { useClient, useClients, useCreateClient, useDeleteClient, useUpdateClient } from '../useClients';
+import {
+    useClient,
+    useClients,
+    useCreateClient,
+    useDeleteClient,
+    useUpdateClient,
+} from '../useClients';
+import {
+    useCreateEntry,
+    useDeleteEntry,
+    useEntries,
+    useEntry,
+    useUpdateEntry,
+} from '../useEntries';
+import {
+    useActiveGigs,
+    useCreateGig,
+    useDeleteGig,
+    useGig,
+    useGigs,
+    useUpdateGig,
+} from '../useGigs';
 import { useCreatePosition, useDeletePosition, usePosition, usePositions } from '../usePositions';
-import { useActiveGigs, useCreateGig, useDeleteGig, useGig, useGigs, useUpdateGig } from '../useGigs';
-import { useCreateEntry, useDeleteEntry, useEntries, useEntry, useUpdateEntry } from '../useEntries';
 
 const listClientsMock = clientsService.listClients as jest.Mock;
 const getClientMock = clientsService.getClient as jest.Mock;
@@ -217,7 +241,10 @@ describe('useCreatePosition', () => {
       });
       result.current.mutate({ clientId: 'client-1', name: 'Gaffer', baseRate: 60 });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(createPositionMock).toHaveBeenCalledWith('client-1', expect.objectContaining({ name: 'Gaffer' }));
+      expect(createPositionMock).toHaveBeenCalledWith(
+        'client-1',
+        expect.objectContaining({ name: 'Gaffer' }),
+      );
     });
   });
 });
@@ -288,7 +315,10 @@ describe('useCreateGig', () => {
       const { result } = renderHook(() => useCreateGig('client-1'), { wrapper: createWrapper() });
       result.current.mutate({ clientId: 'client-1', name: 'New Gig', status: 'active', tags: [] });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(createGigMock).toHaveBeenCalledWith('client-1', expect.objectContaining({ name: 'New Gig' }));
+      expect(createGigMock).toHaveBeenCalledWith(
+        'client-1',
+        expect.objectContaining({ name: 'New Gig' }),
+      );
     });
   });
 });
@@ -376,7 +406,11 @@ describe('useCreateEntry', () => {
         tags: [],
       });
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(createEntryMock).toHaveBeenCalledWith('client-1', 'gig-1', expect.objectContaining({ type: 'shift' }));
+      expect(createEntryMock).toHaveBeenCalledWith(
+        'client-1',
+        'gig-1',
+        expect.objectContaining({ type: 'shift' }),
+      );
     });
   });
 });
@@ -390,7 +424,9 @@ describe('useUpdateEntry', () => {
       });
       result.current.mutate({ date: '2026-05-03' } as never);
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(updateEntryMock).toHaveBeenCalledWith('client-1', 'gig-1', 'entry-1', { date: '2026-05-03' });
+      expect(updateEntryMock).toHaveBeenCalledWith('client-1', 'gig-1', 'entry-1', {
+        date: '2026-05-03',
+      });
     });
   });
 });

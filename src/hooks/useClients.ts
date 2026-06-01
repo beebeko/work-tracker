@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createClient,
-  deleteClient,
-  getClient,
-  listClients,
-  updateClient,
+    createClient,
+    deleteClient,
+    getClient,
+    listClients,
+    updateClient,
 } from '../services/clients';
 import { queryKeys } from '../services/queryKeys';
 import { CreateClientInput, UpdateClientInput } from '../types/client';

@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  createPosition,
-  deletePosition,
-  getPosition,
-  listPositions,
-  updatePosition,
+    createPosition,
+    deletePosition,
+    getPosition,
+    listPositions,
+    updatePosition,
 } from '../services/positions';
 import { queryKeys } from '../services/queryKeys';
 import { CreatePositionInput, UpdatePositionInput } from '../types/position';

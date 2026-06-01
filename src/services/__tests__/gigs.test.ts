@@ -34,8 +34,17 @@ jest.mock('../../lib/firebase', () => ({
   googleProvider: {},
 }));
 
-import { addDoc, deleteDoc, doc, getDoc, getDocs, orderBy, updateDoc, where } from 'firebase/firestore';
-import { Timestamp } from 'firebase/firestore';
+import {
+    addDoc,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    Timestamp,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
 import { gigFixture } from '../../__fixtures__/entities.fixtures';
 import { createGig, deleteGig, getGig, listActiveGigs, listGigs, updateGig } from '../gigs';
 
