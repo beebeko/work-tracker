@@ -30,6 +30,12 @@ jest.mock('firebase-functions/logger', () => ({
   error: jest.fn(),
 }));
 
+// Mock svix Webhook.verify — by default succeed and return the parsed JSON body.
+const mockVerify = jest.fn();
+jest.mock('svix', () => ({
+  Webhook: jest.fn().mockImplementation(() => ({ verify: mockVerify })),
+}));
+
 jest.mock('../lib/openaiClient', () => ({
   getOpenAIClient: jest.fn(),
 }));
@@ -46,14 +52,24 @@ import '../parseEmail';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeRequest(overrides: Partial<{ headers: object; body: object }> = {}) {
-  return {
-    headers: { 'x-parse-webhook-key': 'test-secret', ...overrides.headers },
-    body: {
+  const body = {
+    type: 'email.received',
+    data: {
       from: 'Scheduler <scheduler@acme.com>',
       subject: 'Your call sheet',
       text: 'You are booked June 1st, 8am-6pm as Key Grip on Feature Film.',
-      ...overrides.body,
+      ...(overrides.body ?? {}),
     },
+  };
+  return {
+    headers: {
+      'svix-id': 'msg_test',
+      'svix-timestamp': '1717200000',
+      'svix-signature': 'v1,sig',
+      ...overrides.headers,
+    },
+    body,
+    rawBody: Buffer.from(JSON.stringify(body)),
   };
 }
 
@@ -81,6 +97,8 @@ beforeEach(() => {
   mockDb.where.mockReturnValue(mockDb);
   mockDb.limit.mockReturnValue(mockDb);
   mockDb.add.mockResolvedValue({ id: 'import-new' });
+  // Default: signature verification succeeds and returns the JSON-parsed body.
+  mockVerify.mockImplementation((payload: string) => JSON.parse(payload));
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -144,7 +162,7 @@ describe('parseEmail', () => {
           from: 'scheduler@acme.com',
           subject: 'Kit rental',
           text: 'Box rental $250 on June 2nd.',
-        },
+        } as object,
       });
       const res = makeResponse();
       await capturedHandler!(req, res);
@@ -159,8 +177,12 @@ describe('parseEmail', () => {
   });
 
   describe('authentication', () => {
-    it('returns 401 when webhook secret is missing', async () => {
-      const req = makeRequest({ headers: { 'x-parse-webhook-key': undefined } });
+    it('returns 401 when svix signature verification throws', async () => {
+      mockVerify.mockImplementation(() => {
+        throw new Error('Invalid signature');
+      });
+
+      const req = makeRequest();
       const res = makeResponse();
       await capturedHandler!(req, res);
 
@@ -168,12 +190,26 @@ describe('parseEmail', () => {
       expect(mockDb.add).not.toHaveBeenCalled();
     });
 
-    it('returns 401 when webhook secret is wrong', async () => {
-      const req = makeRequest({ headers: { 'x-parse-webhook-key': 'wrong-secret' } });
+    it('returns 401 when svix headers are missing', async () => {
+      mockVerify.mockImplementation(() => {
+        throw new Error('Missing required headers');
+      });
+
+      const req = makeRequest({ headers: { 'svix-signature': undefined } });
       const res = makeResponse();
       await capturedHandler!(req, res);
 
       expect(res.status).toHaveBeenCalledWith(401);
+    });
+
+    it('returns 401 when rawBody is missing (fails loudly)', async () => {
+      const req = makeRequest();
+      delete (req as any).rawBody;
+      const res = makeResponse();
+      await capturedHandler!(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(mockDb.add).not.toHaveBeenCalled();
     });
   });
 
@@ -193,9 +229,18 @@ describe('parseEmail', () => {
   describe('bad input', () => {
     it('returns 400 when email payload is missing required fields', async () => {
       // Send a raw request with no from or text — bypass makeRequest defaults
+      const body = {
+        type: 'email.received',
+        data: { subject: 'No from or text fields present' },
+      };
       const req = {
-        headers: { 'x-parse-webhook-key': 'test-secret' },
-        body: { subject: 'No from or text fields present' },
+        headers: {
+          'svix-id': 'msg_test',
+          'svix-timestamp': '1717200000',
+          'svix-signature': 'v1,sig',
+        },
+        body,
+        rawBody: Buffer.from(JSON.stringify(body)),
       };
       const res = makeResponse();
       await capturedHandler!(req, res);
@@ -261,7 +306,7 @@ describe('parseEmail', () => {
       );
 
       const longBody = 'A'.repeat(20_000);
-      const req = makeRequest({ body: { from: 'scheduler@acme.com', text: longBody } });
+      const req = makeRequest({ body: { from: 'scheduler@acme.com', text: longBody } as object });
       const res = makeResponse();
       await capturedHandler!(req, res);
 

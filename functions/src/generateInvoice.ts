@@ -144,7 +144,8 @@ export const generateInvoice = onCall<GenerateInvoiceInput>(async (request) => {
   let finalInvoiceId: string;
 
   if (isRegeneration) {
-    // Archive current state to history, then update (re-use already-fetched snap)
+    // Archive current state to history, then update. Re-fetch to ensure we have
+    // the latest state (may have changed since line 101).
     const existingSnap = await db.collection('invoices').doc(invoiceId!).get();
     const existing = existingSnap.data()!;
     const snapshot = {

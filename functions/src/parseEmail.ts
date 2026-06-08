@@ -1,10 +1,10 @@
-import { timingSafeEqual } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import * as logger from 'firebase-functions/logger';
 import { defineSecret } from 'firebase-functions/params';
 import { onRequest } from 'firebase-functions/v2/https';
+import { Webhook } from 'svix';
 import { db } from './lib/admin';
-import { extractAddress, SendGridAdapter } from './lib/emailIngestion';
+import { extractAddress, ResendAdapter } from './lib/emailIngestion';
 import { getOpenAIClient } from './lib/openaiClient';
 import { resolveSenderToClient } from './lib/senderResolver';
 import { SYSTEM_PROMPT } from './prompts/extractJobFromEmail';
@@ -15,7 +15,7 @@ const WEBHOOK_SECRET = defineSecret('PARSE_WEBHOOK_SECRET');
 /** Maximum raw email body stored in Firestore (10 KB). */
 const MAX_RAW_BYTES = 10_240;
 
-const adapter = new SendGridAdapter();
+const adapter = new ResendAdapter();
 
 export const parseEmail = onRequest(
   {
@@ -24,14 +24,23 @@ export const parseEmail = onRequest(
     memory: '512MiB',
   },
   async (req, res) => {
-    // ── Authenticate the webhook ───────────────────────────────────────────
-    const providedSecret = String(req.headers['x-parse-webhook-key'] ?? '');
-    const expectedSecret = WEBHOOK_SECRET.value();
-    const isValid =
-      providedSecret.length > 0 &&
-      providedSecret.length === expectedSecret.length &&
-      timingSafeEqual(Buffer.from(providedSecret), Buffer.from(expectedSecret));
-    if (!isValid) {
+    // ── Verify Svix signature (Resend Inbound) ─────────────────────────────
+    // Svix signs the raw request body; we must verify against req.rawBody, not
+    // the JSON-parsed req.body. Firebase Cloud Functions v2 always provides rawBody
+    // for onRequest handlers.
+    let verifiedPayload: Record<string, unknown>;
+    try {
+      const wh = new Webhook(WEBHOOK_SECRET.value());
+      if (!req.rawBody) {
+        throw new Error('Missing rawBody: Firebase Cloud Functions should provide it');
+      }
+      verifiedPayload = wh.verify(req.rawBody.toString('utf8'), {
+        'svix-id': String(req.headers['svix-id'] ?? ''),
+        'svix-timestamp': String(req.headers['svix-timestamp'] ?? ''),
+        'svix-signature': String(req.headers['svix-signature'] ?? ''),
+      }) as Record<string, unknown>;
+    } catch (err) {
+      logger.warn('parseEmail: signature verification failed', { err });
       res.status(401).send('Unauthorized');
       return;
     }
@@ -39,7 +48,7 @@ export const parseEmail = onRequest(
     // ── Parse the inbound email ────────────────────────────────────────────
     let email;
     try {
-      email = adapter.parse(req.body as Record<string, unknown>);
+      email = adapter.parse(verifiedPayload);
     } catch (err) {
       logger.warn('parseEmail: malformed payload', { err });
       res.status(400).send('Bad Request');

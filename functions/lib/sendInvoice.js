@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendInvoice = void 0;
-const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-admin/firestore");
 const params_1 = require("firebase-functions/params");
+const https_1 = require("firebase-functions/v2/https");
 const resend_1 = require("resend");
 const admin_1 = require("./lib/admin");
 const RESEND_API_KEY = (0, params_1.defineSecret)('RESEND_API_KEY');
@@ -21,6 +21,9 @@ exports.sendInvoice = (0, https_1.onCall)({ secrets: [RESEND_API_KEY] }, async (
         throw new https_1.HttpsError('not-found', 'Invoice not found.');
     }
     const invoice = invoiceSnap.data();
+    if (invoice.ownerUid !== request.auth.uid) {
+        throw new https_1.HttpsError('permission-denied', 'Access denied.');
+    }
     if (!invoice.pdfStoragePath) {
         throw new https_1.HttpsError('failed-precondition', 'Invoice has no PDF. Generate it first.');
     }
