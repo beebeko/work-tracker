@@ -1,8 +1,10 @@
 import { Timestamp } from 'firebase/firestore';
 import { Client, DEFAULT_OVERTIME_RULES } from '../types/client';
+import { ClientSender } from '../types/clientSender';
 import { EmailAccount } from '../types/emailAccount';
 import { Gig } from '../types/gig';
 import { Invoice } from '../types/invoice';
+import { PendingImport } from '../types/pendingImport';
 import { Position } from '../types/position';
 import { UserProfile } from '../types/userProfile';
 import { LumpSumEntry, ShiftEntry } from '../types/workEntry';
@@ -117,4 +119,31 @@ export const emailAccountFixture: EmailAccount = {
   isDefault: true,
   createdAt: mockTimestamp,
   updatedAt: mockTimestamp,
+};
+
+export const clientSenderFixture: ClientSender = {
+  id: 'sender-1',
+  ownerUid: 'test-uid',
+  clientId: 'client-1',
+  pattern: 'scheduler@acme.com',
+  patternType: 'address',
+  createdAt: mockTimestamp,
+};
+
+export const pendingImportFixture: PendingImport = {
+  id: 'import-1',
+  ownerUid: 'test-uid',
+  clientId: 'client-1',
+  rawEmail: 'You are booked for June 1st, 8am–6pm as Key Grip on Feature Film.',
+  extracted: {
+    date: '2026-06-01',
+    entryType: 'shift',
+    startTime: '08:00',
+    endTime: '18:00',
+    positionHint: 'Key Grip',
+    gigHint: 'Feature Film',
+    confidence: 0.92,
+  },
+  status: 'pending',
+  createdAt: mockTimestamp,
 };

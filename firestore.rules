@@ -51,6 +51,18 @@ service cloud.firestore {
       allow create: if isOwnerForCreate();
     }
 
+    // clients/{clientId}/senders/{senderId}
+    match /clients/{clientId}/senders/{senderId} {
+      allow read, update, delete: if isOwner();
+      allow create: if isOwnerForCreate();
+    }
+
+    // pendingImports/{importId}
+    match /pendingImports/{importId} {
+      allow read, update, delete: if isOwner();
+      allow create: if isOwnerForCreate();
+    }
+
     // Deny everything else by default
     match /{document=**} {
       allow read, write: if false;

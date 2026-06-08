@@ -11,20 +11,15 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import {
     CreateEmailAccountInput,
     EmailAccount,
     UpdateEmailAccountInput,
 } from '../types/emailAccount';
+import { requireAuth } from './_requireAuth';
 
 const COLLECTION = 'emailAccounts';
-
-function requireAuth(): string {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Not authenticated');
-  return uid;
-}
 
 function toEmailAccount(id: string, data: Record<string, unknown>): EmailAccount {
   return {

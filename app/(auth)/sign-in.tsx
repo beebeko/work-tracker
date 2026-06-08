@@ -1,25 +1,81 @@
 import { auth, googleProvider } from '@/src/lib/firebase';
 import { useTheme } from '@/src/theme';
-import { signInWithPopup } from 'firebase/auth';
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Google from 'expo-auth-session/providers/google';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
+import { GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
+
+function isRunningInExpoGo() {
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+}
 
 export default function SignInScreen() {
   const { colors, spacing, typography } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (!response) return;
+    if (response.type === 'success') {
+      const idToken = response.params?.id_token;
+      if (!idToken) {
+        setError('Sign in failed: missing id_token from Google.');
+        setLoading(false);
+        return;
+      }
+      const credential = GoogleAuthProvider.credential(idToken);
+      signInWithCredential(auth, credential)
+        .catch((err: unknown) => {
+          const message = err instanceof Error ? err.message : 'Unknown error';
+          setError(`Sign in failed: ${message}`);
+        })
+        .finally(() => setLoading(false));
+    } else if (response.type === 'error') {
+      setError(`Sign in failed: ${response.error?.message ?? 'unknown error'}`);
+      setLoading(false);
+    } else if (response.type === 'cancel' || response.type === 'dismiss') {
+      setLoading(false);
+    }
+  }, [response]);
+
   async function handleSignIn() {
     setError(null);
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      if (Platform.OS === 'web') {
+        await signInWithPopup(auth, googleProvider);
+        setLoading(false);
+      } else {
+        if (isRunningInExpoGo()) {
+          // dev-only message: Expo Go cannot complete Google's OAuth redirect since SDK 48.
+          setError(
+            'Sign in failed: Google sign-in is not supported in Expo Go. Run on web (npm run web) or build a dev client (npx expo run:ios).',
+          );
+          setLoading(false);
+          return;
+        }
+        await promptAsync();
+      }
     } catch (err) {
-      setError('Sign in failed. Please try again.');
-    } finally {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Sign in failed: ${message}`);
       setLoading(false);
     }
   }
+
+  // In Expo Go the button is intentionally enabled so it can surface the friendly error above.
+  const authRequestReady = Platform.OS === 'web' || isRunningInExpoGo() || !!request;
+  const disabled = loading || !authRequestReady;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -33,13 +89,13 @@ export default function SignInScreen() {
 
         <Pressable
           onPress={handleSignIn}
-          disabled={loading}
+          disabled={disabled}
           style={({ pressed }) => [
             styles.button,
             {
               backgroundColor: pressed ? colors.surfaceHighlight : colors.surface,
               borderColor: colors.border,
-              opacity: loading ? 0.6 : 1,
+              opacity: disabled ? 0.6 : 1,
             },
           ]}
           accessibilityRole="button"

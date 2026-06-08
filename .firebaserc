@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "work-tracker-98f72"
-  }
+    "default": "work-tracker-f0f94",
+    "work-tracker": "work-tracker-f0f94"
+  },
+  "targets": {},
+  "etags": {}
 }

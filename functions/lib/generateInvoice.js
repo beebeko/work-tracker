@@ -1,14 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateInvoice = void 0;
-const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-admin/firestore");
-const params_1 = require("firebase-functions/params");
+const https_1 = require("firebase-functions/v2/https");
 const admin_1 = require("./lib/admin");
 const pdf_1 = require("./lib/pdf");
 const buildInvoiceLineItems_1 = require("./pay/buildInvoiceLineItems");
-// Secret not needed here, but imported to validate setup
-(0, params_1.defineSecret)('RESEND_API_KEY');
 exports.generateInvoice = (0, https_1.onCall)(async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError('unauthenticated', 'Must be signed in.');
@@ -31,11 +28,20 @@ exports.generateInvoice = (0, https_1.onCall)(async (request) => {
     const client = clientSnap.data();
     const gig = gigSnap.data();
     const profile = profileSnap.exists ? profileSnap.data() : null;
+    // Ownership checks
+    if (client.ownerUid !== uid)
+        throw new https_1.HttpsError('permission-denied', 'Access denied.');
+    if (gig.ownerUid !== uid)
+        throw new https_1.HttpsError('permission-denied', 'Access denied.');
     // Fetch entries
     const entrySnaps = await Promise.all(entryIds.map((id) => admin_1.db.collection('workEntries').doc(id).get()));
     const entries = entrySnaps
         .filter((s) => s.exists)
         .map((s) => ({ id: s.id, ...s.data() }));
+    // Verify all entries belong to this gig and owner
+    const unauthorized = entries.find((e) => e.gigId !== gigId || e.ownerUid !== uid);
+    if (unauthorized)
+        throw new https_1.HttpsError('permission-denied', 'Access denied.');
     // Fetch positions referenced by the entries
     const positionIds = [
         ...new Set(entries
@@ -66,11 +72,14 @@ exports.generateInvoice = (0, https_1.onCall)(async (request) => {
     let invoiceNumber;
     let isRegeneration = false;
     if (invoiceId) {
-        // Regeneration — keep same number
+        // Regeneration — keep same number, verify ownership
         const existingSnap = await admin_1.db.collection('invoices').doc(invoiceId).get();
         if (!existingSnap.exists)
             throw new https_1.HttpsError('not-found', 'Invoice not found.');
-        invoiceNumber = existingSnap.data().invoiceNumber;
+        const existingInvoice = existingSnap.data();
+        if (existingInvoice.ownerUid !== uid)
+            throw new https_1.HttpsError('permission-denied', 'Access denied.');
+        invoiceNumber = existingInvoice.invoiceNumber;
         isRegeneration = true;
     }
     else {
@@ -108,7 +117,8 @@ exports.generateInvoice = (0, https_1.onCall)(async (request) => {
     // ── Write Firestore ───────────────────────────────────────────────────────
     let finalInvoiceId;
     if (isRegeneration) {
-        // Archive current state to history, then update
+        // Archive current state to history, then update. Re-fetch to ensure we have
+        // the latest state (may have changed since line 101).
         const existingSnap = await admin_1.db.collection('invoices').doc(invoiceId).get();
         const existing = existingSnap.data();
         const snapshot = {
@@ -137,32 +147,42 @@ exports.generateInvoice = (0, https_1.onCall)(async (request) => {
         finalInvoiceId = invoiceId;
     }
     else {
-        // New invoice
-        const ref = admin_1.db.collection('invoices').doc();
-        await ref.set({
-            clientId,
-            gigId,
-            ownerUid: uid,
-            invoiceNumber,
-            status: 'draft',
-            lineItems,
-            entryIds,
-            subtotal: pdfData.subtotal,
-            totalAmount: pdfData.totalAmount,
-            pdfStoragePath,
-            dueDate: dueDate ?? null,
-            notes: notes ?? null,
-            senderEmailAccountId: null,
-            history: [],
-            createdAt: firestore_1.FieldValue.serverTimestamp(),
-            updatedAt: firestore_1.FieldValue.serverTimestamp(),
+        // New invoice — use a transaction to prevent duplicate invoice numbers
+        finalInvoiceId = await admin_1.db.runTransaction(async (tx) => {
+            // Re-read client inside transaction to get a fresh, locked seq
+            const freshClientSnap = await tx.get(admin_1.db.collection('clients').doc(clientId));
+            if (!freshClientSnap.exists)
+                throw new https_1.HttpsError('not-found', 'Client not found.');
+            const freshClient = freshClientSnap.data();
+            if (freshClient.ownerUid !== uid)
+                throw new https_1.HttpsError('permission-denied', 'Access denied.');
+            const seq = freshClient.nextInvoiceSeq ?? 1;
+            const prefix = freshClient.invoicePrefix ?? 'INV-';
+            const txInvoiceNumber = `${prefix}${String(seq).padStart(4, '0')}`;
+            const newRef = admin_1.db.collection('invoices').doc();
+            tx.set(newRef, {
+                clientId,
+                gigId,
+                ownerUid: uid,
+                invoiceNumber: txInvoiceNumber,
+                status: 'draft',
+                lineItems,
+                entryIds,
+                subtotal: pdfData.subtotal,
+                totalAmount: pdfData.totalAmount,
+                pdfStoragePath,
+                dueDate: dueDate ?? null,
+                notes: notes ?? null,
+                senderEmailAccountId: null,
+                history: [],
+                createdAt: firestore_1.FieldValue.serverTimestamp(),
+                updatedAt: firestore_1.FieldValue.serverTimestamp(),
+            });
+            tx.update(admin_1.db.collection('clients').doc(clientId), {
+                nextInvoiceSeq: firestore_1.FieldValue.increment(1),
+            });
+            return newRef.id;
         });
-        // Increment sequence on client
-        await admin_1.db
-            .collection('clients')
-            .doc(clientId)
-            .update({ nextInvoiceSeq: firestore_1.FieldValue.increment(1) });
-        finalInvoiceId = ref.id;
     }
     return { invoiceId: finalInvoiceId };
 });

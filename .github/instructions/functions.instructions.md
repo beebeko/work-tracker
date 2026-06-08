@@ -25,6 +25,18 @@ applyTo: 'functions/**'
 - Attachment PDFs are uploaded to Firebase Storage first; the function reads the buffer and attaches it.
 - Log send attempts and outcomes (success/failure) without logging email content.
 
+## Resend Inbound (email parsing webhook)
+
+- Inbound emails arrive via a Resend Inbound webhook posted to the `parseEmail` `onRequest` function.
+- Resend signs webhooks using **Svix**. Verify every request with `new Webhook(secret).verify(rawBody, headers)` using the `svix` package.
+  - Headers required: `svix-id`, `svix-timestamp`, `svix-signature`.
+  - You **must** pass `req.rawBody` (not the JSON-parsed `req.body`) to `verify()` — signature is over the raw bytes.
+  - On verification failure: respond `401 Unauthorized` and log a warning. Never proceed with unverified payloads.
+- The signing secret is stored as `PARSE_WEBHOOK_SECRET` in Firebase Secret Manager (value starts with `whsec_…`).
+- Payload shape: `{ type: 'email.received', data: { from, to, subject, text, html, ... } }`. The `from` field may be a string or an object (`{ name?, address?, email? }`). Use `ResendAdapter` in `functions/src/lib/emailIngestion.ts` to normalise it.
+- The `SendGridAdapter` is retained for reference / future migration but is **not** wired up. Do not switch back without also reverting the Svix verification path.
+- Unknown senders are silently dropped with `200 OK` — never expose whether a sender is tracked.
+
 ## OpenAI (email parsing)
 
 - OpenAI API key stored in Firebase Secret Manager.

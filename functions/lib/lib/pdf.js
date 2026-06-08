@@ -97,9 +97,10 @@ async function buildPdf(data) {
             drawText(page, `$${fmt(item.rate)}`, COL_RATE, y, regular, 9);
         drawText(page, `$${fmt(item.amount)}`, COL_AMOUNT, y, regular, 9);
         y -= 14;
-        // Page overflow guard (simple — doesn't handle multi-page invoices)
-        if (y < 100)
-            break;
+        // Page overflow guard — multi-page not yet supported; fail loudly
+        if (y < 100) {
+            throw new Error('Invoice has too many line items to fit on a single page. Please split into multiple invoices.');
+        }
     }
     drawHRule(page, y);
     y -= 16;

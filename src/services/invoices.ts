@@ -11,16 +11,11 @@ import {
     updateDoc,
     where,
 } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { CreateInvoiceInput, Invoice, InvoiceStatus, UpdateInvoiceInput } from '../types/invoice';
+import { requireAuth } from './_requireAuth';
 
 const COLLECTION = 'invoices';
-
-function requireAuth(): string {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error('Not authenticated');
-  return uid;
-}
 
 function toInvoice(id: string, data: Record<string, unknown>): Invoice {
   return {
